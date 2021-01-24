@@ -4,10 +4,6 @@ This repository contains all the code files required to generate the tables and 
 ## Step 1: Calibration of Baseline Model (Section 4)
 In this step, the main code file, "oot.f", and all the other input files are located in the folder, "baseline_model". We recommend you use the Intel Fortran Compiler and run the program on a cloud computing platform/university research grid since it takes up a significant amount of memory and time. The program will generate three output files, "output00.m", "output01.m", and, "output02.m", which will be used to generate tables in the next step. You can always skip this step and make use of the generated output files in the "Output" subfolder.
 
-
-
-
-
 Now we give a short introduction to the files in this folder. 
 
 The main code file, "oot.f": it consists of three components. 
@@ -15,8 +11,21 @@ The main code file, "oot.f": it consists of three components.
 We need two external library 
 
 
-## Step 2: 
+## Step 2: Post-Calibration Analysis (Section 5)
+With the output files from Step 1, we use the Matlab code, "ModelOfCity.m", to produce tables and figures. 
 
+
+
+
+
+## Step 3: Couterfactual Analysis (Section 6)
+In this step, we create several counterfactual scenarios by tuning the parameters in the model, and we can take a deep dive into the mechanisms of the model and study study the various factors that drive the 
+
+
+
+
+
+## Other Resources:
 If you need a brief introduction or crash course on coputation in Fortran, we would refer you to the following resources, 
 
 A quantitative economics class taught by Jack Favilukis: https://sites.google.com/site/jackfavilukis/teaching/comm590
