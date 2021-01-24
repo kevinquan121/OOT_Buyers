@@ -20,6 +20,6 @@ In this step, we create several counterfactual scenarios by tuning the parameter
 in this step, the model is recalibrated to incorporate an additional residential zone, luxury housing. The code files are included in a separate folder, "Luxury_Housing". The way to solve the model and do post-computation analysis is the same as the baseline mdoel. 
 
 ## Other Resources:
-If you need a brief introduction or crash course on coputation in Fortran, we would refer you to the following resources, 
+If you need a brief introduction or crash course on computation in Fortran, we would refer you to the following resources, 
 
 A quantitative economics class taught by Jack Favilukis: https://sites.google.com/site/jackfavilukis/teaching/comm590
