@@ -17,7 +17,7 @@ In this step, we create several counterfactual scenarios by tuning the parameter
 
 
 ## Step 4: Luxury Housing (Section 8)
-
+in this step, the model is recalibrated to incorporate an additional residential zone, luxury housing. The code files are included in a separate folder, "Luxury_Housing". The way to solve the model and do post-computation analysis is the same as the baseline mdoel. 
 
 ## Other Resources:
 If you need a brief introduction or crash course on coputation in Fortran, we would refer you to the following resources, 
