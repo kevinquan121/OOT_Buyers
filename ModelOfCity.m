@@ -59,7 +59,7 @@ end
 
 % Start computating statistics
 for model=1
-path="/Users/kevinquan/Dropbox/OOT Junjun/Fortran Output/";
+path="../Fortran Output/";%Put the output files into a folder named "Fortran Output".  
 % Initialize Statistics
 fracRet=0; AvgHours=0; HoursMinBind=0; RetInc=0; RetIncbyLabInc=0; HousTotConsratio=0; NWbyInc=0; GiniNW=0; GiniInc=0;
 Probbequest=0; fracbeqann=0; fracRetRel=0; IncRel=0; MedMktRentbySqftRel=0; HORel=0; cbarFrac=0; MedMktPHbyMedMktRent=0;
@@ -80,7 +80,7 @@ cd(location)
 
 
 %Add function paths
-addpath('/Users/kevinquan/Dropbox/OOTbuyers/Code/Functions')
+addpath('../Functions')
 
 %Input Calibration Results
 output00;
