@@ -1,0 +1,182 @@
+%
+\UseRawInputEncoding
+\newif\ifcomments
+\commentstrue % Use this version to allow in-draft comments
+%\commentsfalse % Use this version to suppress comments
+
+\documentclass[letterpaper,12pt,dvipsnames,usenames]{article}
+
+\usepackage{rotate}
+\usepackage{rotating}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+%\usepackage{changepage}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{setspace}
+\usepackage{graphicx}
+\DeclareGraphicsExtensions{.png,.eps}
+\usepackage{mathpazo}
+\usepackage[margin=1in]{geometry}
+%\usepackage{tabu}
+\usepackage[colorlinks=true, allcolors=BrickRed]{hyperref}
+\usepackage[longnamesfirst]{natbib}
+%\usepackage[capposition=top]{floatrow}
+%\usepackage{subfig}
+
+\newcommand{\sumn}{\sum_{i=1}^{n}}
+\newcommand{\sumt}{\sum_{t=0}^\infty}
+\newcommand{\sums}{\sum_{t=0}^\infty \sum_{s^t}}
+\newcommand{\sumj}{\sum_{j=-\infty}^\infty}
+\newcommand{\fsum}{\frac{1}{n} \sum_{i=1}^n}
+\newcommand{\prodn}{\prod_{i=1}^{n}}
+\newcommand{\intf}{\int_{-\infty}^{\infty}}
+\newcommand{\intz}{\int_0^\infty}
+\newcommand{\limf}{\lim_{n\to \infty}}
+\newcommand{\I}{\mathbb{I}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\bp}{\mathbb{P}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\Cost}{\text{Cost}}
+%\newcommand{\pay}{\text{pay}}
+\newcommand{\cH}{\mathcal{H}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\Cov}{\text{Cov}}
+\newcommand{\topr}{\xrightarrow{  p  }}
+\newcommand{\tod}{\xrightarrow{  d  }}
+\newcommand{\blambda}{\bar{\lambda}}
+\newcommand{\htheta}{\hat{\theta}}
+\newcommand{\hbeta}{\hat{\beta}}
+\newcommand{\hmu}{\hat{\mu}}
+\newcommand{\hF}{\hat{F}}
+\newcommand{\sss}{\subsubsection*}
+\newcommand{\simiid}{\stackrel{\text{iid}}{\sim}}
+\newcommand{\eqas}{\stackrel{\text{a.s.}}{=}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\re}{\text{Re}}
+\newcommand{\im}{\text{Im}}
+\newcommand{\cond}{ \; \Bigr| \; }
+\newcommand{\maxtil}{ \widetilde{\max} }
+
+\newcommand{\dxdy}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\ind}[1]{\mathbf{1}_{\{ #1 \} }}
+\newcommand{\til}[1]{\tilde{#1}}
+
+\newcommand{\pbrac}[1]{\left( #1 \right)}
+\newcommand{\Bigpbrac}[1]{\Bigl( #1 \Bigr)}
+\newcommand{\Biggpbrac}[1]{\Biggl( #1 \Biggr)}
+\newcommand{\bigpbrac}[1]{\bigl( #1 \bigr)}
+\newcommand{\biggpbrac}[1]{\biggl( #1 \biggr)}
+
+\newcommand{\sbrac}[1]{\left[ #1 \right]}
+\newcommand{\Bigsbrac}[1]{\Bigl[ #1 \Bigr]}
+\newcommand{\Biggsbrac}[1]{\Biggl[ #1 \Biggr]}
+\newcommand{\bigsbrac}[1]{\bigl[ #1 \bigr]}
+\newcommand{\biggsbrac}[1]{\biggl[ #1 \biggr]}
+
+\newcommand{\cbrac}[1]{\left\{ #1 \right\}}
+\newcommand{\Bigcbrac}[1]{\Bigl\{ #1 \Bigr\}}
+\newcommand{\biggcbrac}[1]{\biggl\{ #1 \biggr\}}
+\newcommand{\bigcbrac}[1]{\bigl\{ #1 \bigr\}}
+\newcommand{\Biggcbrac}[1]{\Biggl\{ #1 \Biggr\}}
+
+\newcommand{\comment}[1]{\ifcomments {\color{red} [#1]} \fi}
+
+\newcommand{\pfrac}[2]{\pbrac{\frac{#1}{#2}}}
+
+\newcommand{\undertext}[2]{\underbrace{#1}_{\text{#2}}}
+
+\newcommand{\calsection}[1]{\midrule \multicolumn{4}{c}{\textit{#1}} \\ \midrule}
+\newcommand{\tabsection}[2]{\midrule \multicolumn{#1}{c}{\textit{#2}} \\ \midrule}
+\newenvironment{figurenotes}{\begin{spacing}{1.0} \footnotesize \emph{Note:} }{\end{spacing}}
+
+\newcommand{\readmoments}[2]{& \input{#2/mean/#1.tex} & \input{#2/std/#1.tex}}
+\newcommand{\allmoments}[1]{& \readmoments{#1}{\dira} & \readmoments{#1}{\dirb} & \readmoments{#1}{\dirc}}
+
+\def\resversion{20171109}
+\def\texdir{../Code/version\resversion/tex}
+\def\caldir{\texdir/cal}
+\newcommand{\readcal}[1]{\input{\caldir/#1.tex}\unskip}
+\newcommand{\readcalpct}[1]{\input{\caldir/#1_pct.tex}\unskip\%}
+
+\newcommand{\readval}[2]{\input{\texdir/xi_alt_#1/#2.tex}\unskip}
+\newcommand{\baseval}[1]{\readval{no_index}{#1}}
+\newcommand{\readvalNoXi}[2]{\input{\texdir/#1/#2.tex}\unskip}
+
+\def\miscdir{\texdir/misc}
+\newcommand{\readmisc}[1]{\input{\miscdir/#1.tex}\unskip}
+
+\newcommand{\readvalrowNoXi}[2]{#1 & \readvalNoXi{no_index}{#2} & \readvalNoXi{agg}{#2} & \readvalNoXi{idio_25}{#2} & \readvalNoXi{idio_50}{#2} \\}
+%\newcommand{\readvalrowxi}[2]{#1 & \readval{xi_no_index}{#2} & \readval{xi_agg}{#2} & \readval{xi_idio_25}{#2} & \readval{xi_idio_50}{#2} \\}
+\newcommand{\readvalrow}[2]{#1 & \readval{no_index}{#2} & \readval{agg}{#2} & \readval{idio_25_only}{#2} & \readval{idio_25}{#2} \\}
+%\newcommand{\readvalxx}[2]{\input{\texdir/#1/#2_val2.tex}\unskip}
+%\newcommand{\readpct}[2]{\input{\texdir/#1/#2_pct.tex}\unskip\%}
+%\newcommand{\readpctx}[2]{\input{\texdir/#1/#2_pct1.tex}\unskip\%}
+%\newcommand{\readpctxx}[2]{\input{\texdir/#1/#2_pct3.tex}\unskip\%}
+
+\newcommand{\para}[1]{\paragraph{#1.}}
+
+\newcommand{\mbs}[1]{\boldsymbol{#1}}
+\newcommand{\Tau}{\mathcal{T}}
+
+\allowdisplaybreaks[1]
+
+%\numberwithin{equation}{section}
+
+\theoremstyle{definition}
+\newtheorem{thm}{Theorem}
+\newtheorem{claim}{Claim}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{defn}{Definition}
+\newtheorem{cor}{Corollary}
+\newtheorem{ex}{Example}
+\newtheorem{exer}{Exercise}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{ob}{Observation}
+\newtheorem{fact}{Fact}
+
+%\linespread{1.6}
+\linespread{1.3}
+
+\begin{document}
+
+\begin{table}[htbp]
+  \caption{Average MSA Data Targets and Model Fit}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.10}
+\begin{center}
+{\scriptsize
+     \begin{tabular}{ll|cc|cc}
+    \hline
+    &     & \multicolumn{2}{c|}{\textbf{Data}} & \multicolumn{2}{c}{\textbf{ Model}} \\
+    &     & \multicolumn{1}{c}{\textbf{metro}} & \multicolumn{1}{c|}{\textbf{ratio zone 1/zone 2}} & \multicolumn{1}{c}{\textbf{metro}} &  \multicolumn{1}{c}{\textbf{ratio zone 1/zone 2}} \\     \hline
+%& Households (thousands) & & & & \\
+&Fraction of Working Hours  &22.1\% & &25.2\% & \\
+&Wealth to income Ratio &5.69 & &5.78 & \\
+&Gini Coefficient & 0.78 & &0.80 & \\
+&Fraction of Retirees & &0.87 & &0.84 \\
+&household income & &1.12 & &1.12\\
+&market rents per unit & &1.03 & &1.03\\
+&home ownership rate & &0.42 &0.63 &0.65\\
+
+ \hline
+        \end{tabular}
+}
+\end{center}
+\begin{minipage}{\textwidth}\scriptsize
+    \smallskip{\it Notes:} Columns 2-3 report the values for the data of the variables listed in the first column. Data sources and construction are described in detail in Appendix B. Column 3 reports the ratio of the zone 1 value to the zone 2 value in the data. Column 5 reports the same ratio in the model.
+   \end{minipage}
+  \label{tab:NYCtargets}%
+\end{table}%
+
+\end{document}

@@ -1,0 +1,21 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6800 64-bit) (preloaded format=pdflatex 2018.9.16)  8 OCT 2019 13:52
+entering extended mode
+**./Parameters.tex
+(Parameters.tex
+LaTeX2e <2018-04-01> patch level 5
+)
+! Emergency stop.
+<*> ./Parameters.tex
+                    
+*** (job aborted, no legal \end found)
+
+ 
+Here is how much of TeX's memory you used:
+ 67 strings out of 492972
+ 664 string characters out of 3124846
+ 56021 words of memory out of 3000000
+ 4038 multiletter control sequences out of 15000+200000
+ 3640 words of font info for 14 fonts, out of 3000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 7i,0n,7p,81b,8s stack positions out of 5000i,500n,10000p,200000b,50000s
+!  ==> Fatal error occurred, no output PDF file produced!
