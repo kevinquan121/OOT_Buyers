@@ -1,3 +1,5 @@
+<p style='text-align: justify;'>
+
 # Out-of-town Home Buyers and City Welfare (Favilukis and Van Nieuwerburgh forthcoming)
 This repository contains all the code files required to generate the tables and figures in the paper, Out-of-town Home Buyers and City Welfare, forthcoming in the Journal of Finance. To quantify the welfare effects of out-of-town (OOT) home buyers, the paper develops an equilibrium model and calibrates the model to the typical U.S. metropolitan area. 
 
@@ -21,3 +23,5 @@ in this step, the model is recalibrated to incorporate an additional residential
 If you need a brief introduction or crash course on computation in Fortran, please refer to the following resources, 
 
 A quantitative economics class taught by Jack Favilukis: https://sites.google.com/site/jackfavilukis/teaching/comm590
+
+</p>
