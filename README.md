@@ -6,14 +6,12 @@ In this step, we need the folder, "Baseline_Model", which contains the main code
 
 Note that we need two external libraries, "libLAPACK.f" and "libSLATEC.f", which have been included in the folder.
 
-comment out code to calibrate
-
 ## Step 2: Post-Calibration Analysis (Section 5)
-With the output files from Step 1, we use the Matlab code, "ModelOfCity.m", to produce tables and figures. 
+With the output files from Step 1, we use the MATLAB code, "ModelOfCity.m", to produce tables and figures. The MATLAB code will also produce several macro commands for the latex file 
 
 
 ## Step 3: Couterfactual Analysis (Section 6 and Section 7)
-In this step, we create several counterfactual scenarios by tuning the parameters (but we do not recalibrate) in the model. We take a deep dive into the mechanisms of the model and study the various factors that drive the results. To run the cases in this section, we need to make several minor changes to the main code, "oot.f". The edited code files are included in the folder "Counterfactuals". Simply replace "oot.f" in the "Baseline_Model" folder with the 
+In this step, we create several counterfactual scenarios by tuning the parameters (but we do not recalibrate) in the model. We take a deep dive into the mechanisms of the model and study the various factors that drive the results. To run the cases in this section, we need to make several minor changes to the main code, "oot.f". The various cases are displayed in Table 2 in the paper. 
 
 
 ## Step 4: Luxury Housing (Section 8)
