@@ -7,7 +7,7 @@ In this step, we need the folder, "Baseline_Model", which contains the main code
 Note that we need two external libraries, "libLAPACK.f" and "libSLATEC.f", which have been included in the folder.
 
 ## Step 2: Post-Calibration Analysis (Section 5)
-With the output files from Step 1, we use the MATLAB code, "ModelOfCity.m", to produce tables and figures. The MATLAB code will also produce several macro commands for the latex file 
+With the output files from Step 1, we use the MATLAB code, "ModelOfCity.m", to produce tables and figures. The MATLAB code will also produce several macro commands for the latex file, 
 
 
 ## Step 3: Couterfactual Analysis (Section 6 and Section 7)
