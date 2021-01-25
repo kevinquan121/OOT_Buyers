@@ -21,10 +21,11 @@ Age2OwnHurt=0; Age14OwnHurt=0; AvgBenefit=0; AvgOwnBenefit=0; AvgRentBenefit=0;
 % Usually, we only run the code once and set the version number to 0.
 % For the cases in Table 2, we run the fortran code, "oot.f", for 5 times with 
 % different sequence of shocks, and take the average across the output files
-% from different shock sequence. You can always run the Fortran code only once, 
-% and the results will be similar.
+% from different shock sequence. You can always run the code once, and the
+% results are qualitatively similar.
 for version=0 
-cd(path)
+cd(location)
+
 
 %Add function paths
 addpath('../Functions')
