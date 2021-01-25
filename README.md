@@ -16,6 +16,8 @@ With the output files from Step 1, we use the MATLAB code, "ModelOfCity.m", to p
 ## Step 3: Couterfactual Analysis (Section 6 and Section 7)
 In this step, we create several counterfactual scenarios by tuning the parameters (but we do not recalibrate) in the model. We take a deep dive into the mechanisms of the model and study the various factors that drive the results. To run the cases in this section, we need to make several minor changes to the main code, "oot.f". The various cases are displayed in Table 2 in the paper. 
 
+To run the counterfactual cases, 
+
 ## Step 4: Luxury Housing (Section 8)
 in this step, the model is recalibrated to incorporate an additional residential zone, luxury housing. The code files are included in a separate folder, "Luxury_Housing". The way to solve this variation of the baseline model is the same as before. 
 
