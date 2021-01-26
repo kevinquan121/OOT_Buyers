@@ -20,7 +20,7 @@ In this step, we create several counterfactual scenarios by tuning the parameter
 In this step, the model is recalibrated to incorporate an additional residential zone, luxury housing. The code files are included in a separate folder, "Luxury_Housing". The way to solve this variation of the baseline model is the same as before. The MATLAB code needed for the post-computation analysis is "ModelOfCity_luxury.m".
 
 ## Other Resources:
-If you need a brief introduction or crash course on computation in Fortran, please refer to the following resources, 
+If you need a brief introduction or crash course on computation in Fortran, please refer to the following resources 
 
 A quantitative economics class taught by Jack Favilukis: https://sites.google.com/site/jackfavilukis/teaching/comm590
 
