@@ -1291,7 +1291,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%% Create Handles in Latex%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if mode==1 || mode==2
+write=1;
+if mode==1 && write==1
     if model==1
         % Table 1 Parameters
         fID = fopen('../Figures/Parameters.tex','w');
@@ -1637,6 +1638,7 @@ elseif mode==2
 % end
 % fclose(fid);
 else
+    write=1;
     fID = fopen('../Figures/Table4.tex','a+');
 %         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Wel}','{%4.3f}\n']),x1(17))  ;     
 %         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelR}','{%4.3f}\n']),x1(18))  ;     
