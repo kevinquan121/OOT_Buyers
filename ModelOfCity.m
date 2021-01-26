@@ -1,14 +1,74 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%Post-Computation Analysis%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%this uses output from fortran to produce summary statistics%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clear
 % Choose which tables or figures to generate
-% mode = 1 (Baseline Model), 2 (Table 2 conterfactual cases), 3 (Table 3), 4 (Table 4)
-mode=1;
-% Start computating statistics
+mode=1; %1 for table 1 & 2; 2 for table 3; 3 for table 4.
+plot=0;
+if mode==1
+    % Below are the names for the folders where I store the output files from each case in Table 2
+    model_space=["Baseline", "NoZoneTwoOOT", "OOTUpFifty", "OOTDownFifty", "AltOOTB", "PersistHigh", "PersistLow",...
+    "OOTRentOut", "OOTRentOutSixFour", "SameBeta", "LTVHigh", "LTVlow", "HBarZOneEZTwo","HBarZOneDownFifty",...
+    "HighDemandE", "MedDemandE", "LowDemandE", "ProfitRedist", "NoHresMin", "NoShiftThresh", "OnlyOwners",...
+    "OOTTaxtoLowProdPanelB","OOTTaxtoLowProdPanelC", "OOTTaxtoLowProdPanelD", "Luxury"];
+elseif mode==2
+    % Below are the names for the folders where I store the output files
+    % from each case in Table 3
+    tax_space=["0","1","2","346","5","75","10"];
+    theta_space=["0","075","115","155"];
+%    theta_space=["115","155"];
+%    b_space=["64"];
+    b_space=["06","64"];
+%    b_space=["64"];
+    name_sequence=["one","two", "three", "four", "five", "six", "seven"];
+    table3_space=[];
+    latex_macro_name=[];
+    for i=1:length(b_space)
+        temp_name1=join(["b",b_space(i)],"");
+        temp_macro_name1=join(["b",name_sequence(i)],"");
+        for j=1:length(theta_space)
+            temp_name2=join([temp_name1,"theta",theta_space(j)],"");
+            temp_macro_name2=join([temp_macro_name1,"theta",name_sequence(j)],"");
+            for k=1:length(tax_space)
+                temp_name3=join([temp_name2,"tax",tax_space(k)],"");
+                temp_macro_name3=join([temp_macro_name2,"tax",name_sequence(k)],"");
+                table3_space=[table3_space temp_name3];
+                latex_macro_name=[latex_macro_name temp_macro_name3];
+            end
+        end
+    end
+    model_space=table3_space;
+else
+    % Below are the names for the folders where I store the output files
+    % from each case in Table 4
+    tax_space=["0","1","2","346","5","75","10"];
+    b_space=["06","64"];
+    ite_space=["1","2","3","4","5"];
+    name_sequence=["one","two", "three", "four", "five", "six", "seven"];
+    table4_space=[];
+    latex_macro_name=[];
+    for i=1:length(b_space)
+        temp_name1=join(["b",b_space(i)],"");
+        temp_macro_name1=join(["b",name_sequence(i)],"");
+        for j=1:length(tax_space)
+            temp_name2=join([temp_name1,"theta115tax",tax_space(j)],"");
+            temp_macro_name2=join([temp_macro_name1,"tax",name_sequence(j)],"");
+            for k=1:length(ite_space)
+                temp_name3=join([temp_name2,"/",ite_space(k)],"");
+                table4_space=[table4_space temp_name2];
+                latex_macro_name=[latex_macro_name temp_macro_name2];
+            end
+        end
+    end
+    model_space=table4_space;
+end
 
-path="../Fortran Output/"; % where you have stored your Fortran output files
+%model_space=["b06theta0tax0", "b06theta075tax0", "b06theta115tax0", "b06theta155tax0" ];
+
+% Start computating statistics
+for model=1
+path="../Fortran Output/"; %folders where you store Fortran output files
 % Initialize Statistics
 fracRet=0; AvgHours=0; HoursMinBind=0; RetInc=0; RetIncbyLabInc=0; HousTotConsratio=0; NWbyInc=0; GiniNW=0; GiniInc=0;
 Probbequest=0; fracbeqann=0; fracRetRel=0; IncRel=0; MedMktRentbySqftRel=0; HORel=0; cbarFrac=0; MedMktPHbyMedMktRent=0;
@@ -24,8 +84,23 @@ Age2OwnHurt=0; Age14OwnHurt=0; AvgBenefit=0; AvgOwnBenefit=0; AvgRentBenefit=0;
 % different sequence of shocks, and take the average across the output files
 % from different shock sequence. You can always run the Fortran code only once, 
 % and the results will be similar.
-for version=0 
-cd(path)
+for version=0
+if mode==1
+    location=join([path,"Table2/",num2str(model_space(model)),"/version",num2str(version)],"");
+elseif mode==2
+    location=join([path,"Table3/",num2str(model_space(model))],"");
+else
+    location=join([path,"Table4/",num2str(model_space(model))],"");
+end
+cd(location)
+
+%Check whether the current folder is empty, and if empty, skip current iteration.
+% [~,list] = system('dir /S *.m');
+% result = textscan(list, '%s', 'delimiter', '\n');
+% fileList = result{1};
+% if length(fileList)<=3
+%     continue
+% end
 
 %Add function paths
 addpath('../Functions')
@@ -47,29 +122,21 @@ T=length(out); nAgent=length(outInd)/T; nAge=max(outInd(:,3));
 in0=[1:T]'>100; in1=[1:T]'>100 & out(:,1)==1; in2=[1:T]'>100 & out(:,1)==2;
 
 %%%Clean Macro Variables%%%
+
 [a, b]=size(taxpropOOT); if b==1; taxpropOOT=ones(1,2)*taxpropOOT; end
 [a, b]=size(taxprop); if b==1; taxprop=[taxprop taxprop]; end
+%outInd=out3; clear out3;
 if exist('RTSH1loc1')==1; H1bar=RTSH1loc1; else; if length(HBARloc1)==1; H1bar=HBARloc1; else; H1bar=HBARloc1(out(:,1)); [a b]=size(H1bar); if a<T; H1bar=H1bar'; end; end; end;
 if exist('RTSH1loc2')==1; H2bar=RTSH1loc2; else; if length(HBARloc2)==1; H2bar=HBARloc2; else; H2bar=HBARloc2(out(:,1)); [a b]=size(H2bar); if a<T; H2bar=H2bar'; end; end; end;
 RTSHloc1=RTSH0loc1; RTSHloc2=RTSH0loc2;
 if length(deprH)==1; deprH(2)=deprH(1); end
+%RCrentred=[.5 .5];
 high=out(:,1)==2;
 low=out(:,1)==1;
 ForDemTot(:,1)=exp(HFgrid0(out(:,1),1)-HFgrid1(out(:,1),1).*log(out(:,10).*(1+taxpropOOT(1)))); %this is foreign demand per capita in Z1
 ForDemTot(:,2)=exp(HFgrid0(out(:,1),2)-HFgrid1(out(:,1),2).*log(out(:,11).*(1+taxpropOOT(2)))); %this is foreign demand per capita in Z2
 OOT1=mean(ForDemTot(high,1)./out(high,7)); %share of OOT demand in Z1
 OOT2=mean(ForDemTot(high,2)./out(high,8)); %share of OOT demand in Z2
-% computeOOT1(-5.746, high, HFgrid1(out(:,1),1), out(:,10), out(:,7), taxpropOOT(1));
-% computeOOT2(-3.328, high, HFgrid1(out(:,1),2), out(:,11), out(:,8), taxpropOOT(1));
-% 
-% computeOOT1(-4.617, high, HFgrid1(out(:,1),1), out(:,10), out(:,7), taxpropOOT(1));
-% computeOOT2(-3.34, high, HFgrid1(out(:,1),2), out(:,11), out(:,8), taxpropOOT(1));
-
-INVoOOT=mean(((outnext(in,7)-(1-deprH(1))*out(in,7))+(outnext(in,8)-(1-deprH(1))*out(in,8)))./sum(ForDemTot(reverse_in,:),2));
-
-INVoOOT=mean(((outnext(in,7)-(1-deprH(1))*out(in,7))+(outnext(in,8)-(1-deprH(1))*out(in,8)))./sum(out(in,7:8),2));
-
-
 
 P1_high=mean(out(high,10));
 P2_high=mean(out(high,11));
@@ -295,7 +362,10 @@ CommCostFinbyInc=CommCostFin/0.285;
 CommCostFinDollar=CommCostFinbyInc*AvgMSAInc;
 
 %%% Baseline Results
-% Earnings, Wealth, and Home Ownership
+% ?Earnings, Wealth, and Home Ownership
+
+
+
 
 BindNext=(NWind+LIind-Cind-RentInd.*HresInd-(RenterInd==2).*(HresInd+Hind).*(PHind-RentInd))/PriceBond;
 NWindNext=BindNext+(RenterInd==2).*(HresInd+Hind).*((LOCind==1).*kron([out(2:T,10);
@@ -777,10 +847,9 @@ AvgInitIncomeDollars=14.68; %generic city (thousands)
 %AvgIncomeDollars=97.577/HHsize; %NYC (thousands)
 %AvgInitIncomeDollars=(14.68/31.42)*AvgIncomeDollars; %NYC (thousands)
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if mode==1
-    path_fig="../Figures/";% where you have stored the figures
+%%
+if mode==1 && model==1 && plot==1
+    path_fig="../Figures/";
     openfig(join([path_fig, "city_fig_wealth_data_model"], ""))
     subplot(3,2,2); hold off
     plot(([1:18]'-1)*4+22.5,HHsize*AvgInitIncomeDollars*wg_by_age_income(1:18,2)/wg_by_age_income(1,2),'k','LineWidth',3); hold on
@@ -820,10 +889,10 @@ end
     y1=[dW(1:20,1) dWrenter(1:20,1) dWowner(1:20,1) ]*100;
     y2=[dWinc1(1:20,1) dWinc2(1:20,1) dWinc3(1:20,1) ]*100;
     y3=[dWnw1(1:20,1) dWnw2(1:20,1) dWnw3(1:20,1) ]*100;
-if mode==1
+if mode==1 && model==1 && plot==1
     x=categorical(["21-24","25-28","29-32","33-36","37-40","41-44","45-48","49-52","53-56","57-60",...
         "61-64","65-68","69-72","73-76","77-80","81-84","85-88","89-92","93-96","97-100"]);  
-    path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+    path_fig="../Figures/";
     openfig(join([path_fig, "welfarebyageincomewealth_updated"], ""))
     subplot(3,1,1); hold off
     bar(x,y1,'grouped');
@@ -971,7 +1040,7 @@ end
 %     end
 %     x=categorical(["Low & impatient","Low & patient","Med & impatient","Med & patient","High & impatient","High & patient"]);  
 %     x=reordercats(x,{'Low & impatient','Low & patient','Med & impatient','Med & patient','High & impatient','High & patient'});
-%     path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+%     path_fig="../Figures/";
 %     openfig(join([path_fig, "welfare_by_productivity_baseline_taxtolow"], ""))
 %     if model==1
 %     subplot(2,1,1); hold off
@@ -994,7 +1063,7 @@ end
 %     end
 %     x=categorical(["Low","Med","High"]);  
 %     x=reordercats(x,{'Low','Med','High'});
-%     path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+%     path_fig="../Figures/";
 %     openfig(join([path_fig, "welfare_by_productivity_baseline_taxtolow1"], ""))
 %     if model==1
 %     subplot(2,2,1);
@@ -1141,7 +1210,7 @@ end
 % yearnings=[dE(1:11) dErenter(1:11) dEowner(1:11)];
 % x=categorical(["21-24", "25-28", "29-32","33-36","37-40","41-44","45-48","49-52","53-56","57-60",...
 %     "61-64"]);  
-% path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+% path_fig="../Figures/";
 % openfig(join([path_fig, "Earningsbyage"], ""))
 % bar(x,yearnings,'grouped');
 % legend('all', 'renter', 'owner', 'Position',[0.25 0.75 0.02 0.02])
@@ -1291,7 +1360,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%% Create Handles in Latex%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if mode==1 || mode==2
+write=1;
+if mode==1 && write==1
     if model==1
         % Table 1 Parameters
         fID = fopen('../Figures/Parameters.tex','w');
@@ -1637,19 +1707,26 @@ elseif mode==2
 % end
 % fclose(fid);
 else
-    fID = fopen('../Figures/Table4.tex','a+');
+    write=1;
+    if write==0
+        fID = fopen('../Fortran Output/Table4/table4.txt','a+');
+        fprintf(fID,join([num2str(model_space(model)),'-tax_neutral_rate-','{%4.5f}\n']),tax_neutral)  ;     
+        fclose(fID);
+        elses
+        fID = fopen('../Figures/Table4.tex','a+');
 %         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Wel}','{%4.3f}\n']),x1(17))  ;     
 %         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelR}','{%4.3f}\n']),x1(18))  ;     
 %         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelO}','{%4.3f}\n']),x1(19))  ;     
 %         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Welfare}','{%4.3f}\n']),Welfare)  ;
 %         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Tax}','{%4.2f}\n','\%']),tax_neutral*100)  ;   
-    fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Wel}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(17)),x1(17)])  ;   
-    fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelR}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(18)),x1(18)])  ;   
-    fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelO}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(19)),x1(19)])  ;   
-    fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Tax}[1]{\\num[round-mode=places,round-precision=#1]','{%4.4f}}\n']), tax_neutral*100)  ;   
-    fclose(fID);
+        fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Wel}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(17)),x1(17)])  ;   
+        fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelR}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(18)),x1(18)])  ;   
+        fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelO}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(19)),x1(19)])  ;   
+        fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Tax}[1]{\\num[round-mode=places,round-precision=#1]','{%4.4f}}\n']), tax_neutral*100)  ;   
+        fclose(fID);
+    end
 end 
-
+end
 %                             H1        H2       n1        n2
 %rhoh=0.5, H1bar=10, H2bar=10:   98.0392   98.0392  250.0000  250.0000
 %rhoh=0.5, H1bar=5,  H2bar=15:   94.9903   99.8938  243.7500  256.2500 --> z1 changed to 25% of space but still has 48.75% of population and housing

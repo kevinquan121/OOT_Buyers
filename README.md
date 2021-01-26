@@ -17,7 +17,7 @@ With the output files from Step 1, we use the MATLAB code, "ModelOfCity.m", to p
 In this step, we create several counterfactual scenarios by tuning the parameters (but we do not recalibrate) in the model. We take a deep dive into the mechanisms of the model and study the various factors that drive the results. To run the cases in this section, we need to make several minor changes to the main code, "oot.f". The various cases are displayed in Table 2 in the paper. 
 
 ## Step 4: Luxury Housing (Section 8)
-In this step, the model is recalibrated to incorporate an additional residential zone, luxury housing. The code files are included in a separate folder, "Luxury_Housing". The way to solve this variation of the baseline model is the same as before. 
+In this step, the model is recalibrated to incorporate an additional residential zone, luxury housing. The code files are included in a separate folder, "Luxury_Housing". The way to solve this variation of the baseline model is the same as before. The MATLAB code needed for the post-computation analysis is "ModelOfCity_luxury.m".
 
 ## Other Resources:
 If you need a brief introduction or crash course on computation in Fortran, please refer to the following resources, 

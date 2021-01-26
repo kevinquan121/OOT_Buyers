@@ -65,7 +65,7 @@ end
 %for model=1
 for model=length(model_space)
     
-path="/Users/kevinquan/Dropbox/OOT Junjun/Fortran Output/";
+path="../Fortran Output/";
 % Initialize Statistics
 fracRet=0; AvgHours=0; HoursMinBind=0; RetInc=0; RetIncbyLabInc=0; HousTotConsratio=0; NWbyInc=0; GiniNW=0; GiniInc=0;
 Probbequest=0; fracbeqann=0; fracRetRel=0; IncRel=0; MedMktRentbySqftRel=0; HORel=0; cbarFrac=0; MedMktPHbyMedMktRent=0;
@@ -93,7 +93,7 @@ cd(location)
 % end
 
 %Add function paths
-addpath('/Users/kevinquan/Dropbox/OOTbuyers/Code/Functions')
+addpath('../Functions')
 
 %Input Calibration Results
 output00
@@ -816,7 +816,7 @@ AvgInitIncomeDollars=14.68; %generic city (thousands)
 
 %%
 if mode==1 && model==1
-    path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+    path_fig="../Figures/";
     openfig(join([path_fig, "city_fig_wealth_data_model"], ""))
     subplot(3,2,2); hold off
     plot(([1:18]'-1)*4+22.5,HHsize*AvgInitIncomeDollars*wg_by_age_income(1:18,2)/wg_by_age_income(1,2),'k','LineWidth',3); hold on
@@ -859,7 +859,7 @@ if mode==1 && model==1
     y3=[dWnw1(1:20,1) dWnw2(1:20,1) dWnw3(1:20,1) ]*100;
     x=categorical(["21-24","25-28","29-32","33-36","37-40","41-44","45-48","49-52","53-56","57-60",...
         "61-64","65-68","69-72","73-76","77-80","81-84","85-88","89-92","93-96","97-100"]);  
-    path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+    path_fig="../Figures/";
     openfig(join([path_fig, "welfarebyageincomewealth_updated"], ""))
     subplot(3,1,1); hold off
     bar(x,y1,'grouped');
@@ -976,7 +976,7 @@ end
 %     end
 %     x=categorical(["Low & impatient","Low & patient","Med & impatient","Med & patient","High & impatient","High & patient"]);  
 %     x=reordercats(x,{'Low & impatient','Low & patient','Med & impatient','Med & patient','High & impatient','High & patient'});
-%     path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+%     path_fig="../Figures/";
 %     openfig(join([path_fig, "welfare_by_productivity_baseline_taxtolow"], ""))
 %     if model==1
 %     subplot(2,1,1); hold off
@@ -999,7 +999,7 @@ if mode==1 && (model==1 || model==length(model_space)-1 || model==length(model_s
     end
     x=categorical(["Low","Med","High"]);  
     x=reordercats(x,{'Low','Med','High'});
-    path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+    path_fig="../Figures/";
     openfig(join([path_fig, "welfare_by_productivity_baseline_taxtolow1"], ""))
     if model==1
     subplot(2,2,1);
@@ -1048,7 +1048,7 @@ if mode==1 && (model==1 || model==length(model_space)-1 || model==length(model_s
     end
     x=categorical(["Low","Med","High"]);  
     x=reordercats(x,{'Low','Med','High'});
-    path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+    path_fig="../Figures/";
     openfig(join([path_fig, "welfare_by_productivity_baseline_taxtolow2"], ""))
     if model==1
     subplot(2,2,1);
@@ -1092,7 +1092,7 @@ end
 % yearnings=[dE(1:11) dErenter(1:11) dEowner(1:11)];
 % x=categorical(["21-24", "25-28", "29-32","33-36","37-40","41-44","45-48","49-52","53-56","57-60",...
 %     "61-64"]);  
-% path_fig="/Users/kevinquan/Dropbox/OOTbuyers/Figures/";
+% path_fig="../Figures/";
 % openfig(join([path_fig, "Earningsbyage"], ""))
 % bar(x,yearnings,'grouped');
 % legend('all', 'renter', 'owner', 'Position',[0.25 0.75 0.02 0.02])
@@ -1242,7 +1242,7 @@ end
 if mode==1
     if model==1
         % Table 1 Parameters
-        fID = fopen('/Users/kevinquan/Dropbox/OOTbuyers/Figures/Parameters.tex','w');
+        fID = fopen('../Figures/Parameters.tex','w');
         % Panel A
         fprintf(fID,'\\newcommand{\\IncStates}{%4.3f %4.3f %4.3f}\n',IncStates(1:3))  ; 
         fprintf(fID,'\\newcommand{\\psiz}{%4.3f %4.3f %4.3f}\n',SSIdist(1:3))  ; 
@@ -1435,7 +1435,7 @@ if mode==1
     end
     
     %Table 2
-     fID = fopen(join(['/Users/kevinquan/Dropbox/OOTbuyers/Figures/Table2',num2str(model_space(model)),'.tex']),'w');
+     fID = fopen(join(['../Figures/Table2',num2str(model_space(model)),'.tex']),'w');
 %     fprintf(fID,join(['\\newcommand{\\',num2str(model_space(model)),'W}[1]{\\num[round-mode=places,round-precision=#1]','{%4.4f}}\n']),x1(1))  ;   
 %     fprintf(fID,join(['\\newcommand{\\',num2str(model_space(model)),'Rone}[1]{\\num[round-mode=places,round-precision=#1]','{%4.4f}}\n']),x1(2))  ;   
 %     fprintf(fID,join(['\\newcommand{\\',num2str(model_space(model)),'Rtwo}[1]{\\num[round-mode=places,round-precision=#1]','{%4.4f}}\n']),x1(3))  ;   
@@ -1550,7 +1550,7 @@ if mode==1
     fclose(fID);
     
 elseif mode==2
-    fID = fopen('/Users/kevinquan/Dropbox/OOTbuyers/Figures/Table3.tex','a+');
+    fID = fopen('../Figures/Table3.tex','a+');
 %     fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Wel}','{%4.3f}\n']),x1(16))  ;     
 %     fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelR}','{%4.3f}\n']),x1(17))  ;     
 %     fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelO}','{%4.3f}\n']),x1(18))  ;     
@@ -1563,7 +1563,7 @@ elseif mode==2
     fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelR}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(17)),x1(17)])  ;   
     fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelO}[2]{\\ifnum #2=1 \\num[round-mode=places,round-precision=#1]{%4.4f} \\else \\num[round-mode=places,round-precision=#1]','{%4.4f}\\fi}\n']),[abs(x1(18)),x1(18)])  ;   
     fclose(fID);
-%     fID = fopen('C:\Users\kevinquan\Dropbox\OOTbuyers\Figures\Table3.tex','r');
+%     fID = fopen('..\Figures\Table3.tex','r');
 %     Text = textscan(fID, '%s', 'Delimiter', '\n');  
 %     result = Text{1};
 %     a = regexp(result,'dsadsadasdasdas')
@@ -1583,11 +1583,11 @@ elseif mode==2
 else
     write=1;
     if write==0
-        fID = fopen('/Users/kevinquan/Dropbox/OOT Junjun/Fortran Output/Table4/table4.txt','a+');
+        fID = fopen('../Fortran Output/Table4/table4.txt','a+');
         fprintf(fID,join([num2str(model_space(model)),'-tax_neutral_rate-','{%4.5f}\n']),tax_neutral)  ;     
         fclose(fID);
     else
-        fID = fopen('/Users/kevinquan/Dropbox/OOTbuyers/Figures/Table4.tex','a+');
+        fID = fopen('../Figures/Table4.tex','a+');
         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'Wel}','{%4.3f}\n']),x1(16))  ;     
         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelR}','{%4.3f}\n']),x1(17))  ;     
         fprintf(fID,join(['\\newcommand{\\',num2str(latex_macro_name(model)),'WelO}','{%4.3f}\n']),x1(18))  ;     
