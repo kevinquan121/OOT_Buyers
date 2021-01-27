@@ -1,192 +1,3 @@
-!2016/03/01
-!-This code gets same results as analytic solution for Renters (iRenter=1)
-!-This code gets same results as analytic Renter's solution for owners (iRenter=2) when return on housing is equal to the risk free rate
-!-When rent is relatively high, renters choose cheaper location. When minimum rent (across both locations) is relatively high: renters consume more, work less, and choose smaller houses
-!-When price is relatively high, owners choose cheaper location. When the minimum price (across both locations) is relatively high: owners choose less residential and investment property
-!-(done) Add depreciation to PRgrid, calculation of NWnext, and optimal residential choice
-!-(done) Check that renter's solution is identical to analytic solution when no constraints and no risk
-!-(done) Check that owner's solution is identical to renter's solution and owner is indifferent about
-! real estate share in portfolio when no constraints, no risk, and no owner/renter depreciation differneces
-!-(done) Check that policy functions make sense for different prices
-!-Code up to this point is saved as ModelOfCityOld20160307.f
-!2016/03/08
-!-(done) Add age dependent labor income profile (AgeProd), social security tax (tax), pension (Pension), retirement (if iAge<=iRet then: Hours=0, LaborIncome=Pension, not dividing NWnext by DZgrid)
-!-(done) Check that this code is identical to ModelOfCityOld20160307.f if nRet=0, AgeProd=1, tax=0, Pension=0, and Hours>0 constraint is absent
-!2016/03/09
-!-(done) N>0, budget constraint, and downpayment constraint. Put in if statements consistent w/ lagrange multipliers binding
-! -(done) Renter: If Hnext<0 then Hnext=0. If Bnext<0, then set U=minval.
-! -(done) Onwer: If Hnext<0 then Hnext=0. If ColConstr violated, then set Hres=Hres0; if Hres0<0, then set U=minval. Here Hres0 is the value that makes the collateral constraint bind
-!-(done) Add code to write policy and value functions: pol01.txt,pol02.txt ...
-!-(done) Make policy include the optimal Cchoice and Hchoice conditional on any combination of (iRenter,iLOC), not just for the best combination
-!-(done) getpolicy is built. for every choice of (iRenter,iLOC) it computes interpolated ValFun, C, Hinv and then chooses the best (iRenter,iLOC)
-!-(done) Checked that when N>0, budget constraint, downpayment constraint are all commented out, then solution is identical to analytic
-!-(done) Checked that (if redefine PR1grid and PR2grid to be prices rather than price/rent ratios) agent chooses to rent when rent is relatively low and to own when price is relatively low; agent chooses the cheaper location; agent chooses more housing consumption when rent and/or price are low; more housing investment when price is low.
-!2016/03/24
-!-(done) DP: added an extra calculation of Util inside if statement where Hres is changed (when collateral constraint binds)
-!-(done) Began building Simulate. It can now call getpolicy for some initital inputs.
-!-(done) Checked that:
-!        a) Higher wage leads to higher hours and consumption
-!        b) Higher price and rent in zone 1 shifts housing to zone 2 (and vice versa)
-!        c) Higher price/rent (for a given rent) shifts housing towards renting and less investment; lower price/rent shifts housing towards owning and more investment
-!        d) When rents are same in both zones but price in zone 1 is higher, all owners shift to zone 2
-!2016/03/27
-! -(done) In definition of RP1grid, it was RP1grid(nRent1) instead of RP1grid(nRP1), now fixed
-! -(done) In DP changed multH1=RPnextMult(iAgg,iHFnext) to H1nextMult(iAgg,iHFnext) and same for H2
-! -(done) Changed all references to H1 and H2 to H1last and H2last in Simulate and GetPolicy (no changes made to DP)
-! -(done) Changed notation so that H1grid and H2grid are the per capita average housing quantites so that H1=H1grid*nAgents
-! -(done) In simulation added calculation of production side: HoursDemand,H1,H2 (and some intermediate quantities)
-!2016/04/26
-! -(done) Changed all labels from PR (price rent) to RP (risk premium)
-! -(done) In DP created recursion to compute PH(iAgg)=Rent(iAgg)+E[PH(iAgg,iHFnext)]/(rf+RP(iAgg)). This computes PH1grid(iAgg,1) and PH2grid(iAgg,1) (and writes them to text). Also computes PH1nextGrid(iAgg,iHFnext), PH2nextGrid(iAgg,iHFnext).
-!   -(done) Test that the prices computed make sense (should be equal to Rent/(RF-1) when no risk premium and smaller when risk premium
-!   -(done) Test that policy and value functions are consistent w/ previous code
-! -(done) In DP, changed some of the if statements for when something is out of bounds - this ensures that agents w/ very small wealth and utility aren't buying investment property
-! -(done) Checked that when RP=0, agent is indifferent b/w renting, owning w/ Hinv=0, or owning w/ Hinv>0 (as long as the down payment constraints aren't violated)
-! -(done) In DP, force Hchoice=0 when RP=0. Later need to check that this is optimal (if housing is a good enough hedge, there may be demand for investment property at zero or even negative risk premiums). Can check this by expeding RPgrid to have negative values
-! -(done) In Simulate read PH1grid and use them to compute prices from Rent and RP
-! -(done) Add market clearing inside Simulate (no need for separate function)
-!   -Market clearing process seems to work well when restricted to one zone only (ie H2last=0 and RTSH0loc2=0). Prices converge and all markets clear
-!   -Market clearing also seems to work well when allowing for both zones. Prices converge. Labor market clears. The housing and rental market don't quite clear. Housing supply converges but housing demand hops around the supply - this happens because agents are indifferent so a small change in prices causes them to jump from one zone to another. Similarly, in the rental market supply and demand hop around what i think are the equilibrium values - again hopping around happens due to indifference
-!2016/04/27
-! -(done) Added periods, indexed by t. Added Xlast and/or Xnext so that the period t+1 variable is computed at the end of period t
-! -(done) Improved how RP is updated
-! -(done) Added tiebreaker to improve market clearing
-! -(done) Fixed several mistakes involving nRet when selecting who is working/retiring and computing PensionTax in Simulate
-! -(done) In Simulate, Pension=PensionTax/NumRetired where PensionTax=tax*sum(LaborIncome). An alternative is compute PensionBelief from interpolating PensionGrid. It should be that Pension=PensionGrid once everything is converged
-! -(done) In Simulate, H1 and H2 are defined as total (as opposed to per capita) housing. However, H1grid and H2grid are defined as per capita. Therefore, when sending H1last and H2last to interpAgg and getpolicy, need to send H1last/real(nAgent) and H2last/real(nAgent)
-! -This version is ready to simulate. Seems that several problems while simulating:
-!  -Age=15 agents have Bnext around 0.8. This was because NWgrid(7)=-0.00001 and NWgrid(8)=0.8 so they were getting very negative utility from being just below 0. Now fixed, but must have a gridpoint on NWgrid just above 0.
-!  -Once simulation gets going, everyone is renting and no one is buying investment property despite high premium. Fixed. Needed to extend premium grid. Equilibrium premium is very high because, due to PIH, agents have near zero wealth. Buying a house requires very high leverage, thus even small shocks may violate borrowing constraint
-!  -Once simulation gets going, NW becomes negative. I think this is due to interpolation issue: When Bnext=0 (last year of life), due to Hours>=0 constraint, Cons as a function of NW is convex, thus interpolation leads to too high consumption, which in turn leads to Bnext<0. How to fix? Maybe spline or finer NWgrid.
-!2016/05/23:
-! -(done) Add computation of derivatives of Policy w/ respect to NW for spline interpolation. Compute consumption policy using spline --> seems to work better
-! -(done) Change tiebreaker to be multiplicative rather than additive - otherwise scale of value function affects necessary size of tiebreaker
-! -(done) Added ValFunInd to the output of getpolicy
-! -(done) Checked that if 1) Beliefs about future (Wage,Rent,RP) are constant, 2) Simulated quantities are identical to beliefs, 3) beta=PriceDebt then (consistent w/ Permanent Income Hypothesis) an agent starting w/ NW>0 slowly draws it down to zero by death, s.t. C and Hres are (approximately) constant
-! -(done) Fixed problem in calculation of prices from risk premia. Depr was in the wrong place: multiplied Rent instead of E[PHnext]
-! -(done) Changed initialization of RenterInd (was mistakenly initializing RenterIndLast)
-! -(done) Changed market clearing process: 1) Added WageLast,Rent1last,etc so that to quit iteration once prices are not changing by much, 2) changed the speed at which updating happens
-! -(done) Added foreign demand to market clearing process. This only affects owners in zone 1 because foreigners do not buy housing and do not rent out their housing.
-! -(done) Added output and outputWelf, which are written to temp01.txt and temp02.txt
-! -(done) Set theta=1 (was .8 before). Otherwise was making renting preferential to owning when should have been indifferent
-! -(done) Changed Cchoice process when iCchoice<nCchoice0+1. Now have Cmin=0.001 and Cmax=1.05*(LaborIncome+max(.01,NW))+.05. Also added Cint
-! -(done) Added if(Hres.lt.0.001) Hres=0.001 where collateral constraint is violated
-! -(done) AgeProd(iAge) changed to AgeProd(nAge+1-iAge) in DP
-! -(done) When computing labor supply (Hours), changed to Sum(HoursInd*AgeProd) from Sum(HoursInd)
-! -(done) There were issues w/ nRet, this is now fixed. If Age>=nWork-nRet, ZindNext=Zind (both DP and Simulate)
-! -(done) Added constants to production function for scaling reasons. Before had: Y(H,RTS)=H^RTS --> P*RTS*(H^(RTS-1))=Wage --> Hdem=(P*RTS/Wage)^(1/(1-RTS))
-!         Changed to: Y(H,RTS)=(1/a)*N*(H/N)^RTS=(1/a)*(N^(1-RTS))*(H^RTS) -->  Wage=(N^(1-RTS))*(P*RTS/a)*(H^(RTS-1))=(P*RTS/a)*((H/N)^(RTS-1))
-!         Hdem=N*(P*RTS/(a*Wage))^(1/(1-RTS)) --> Hdem is linear in N
-!         Suppose Hsup(i)=1/Wage --> Hsup=N/Wage --> market clearing Wage is independent of N --> Wage=(P*RTS/a)^(1/RTS) --> Hdem=N*(P*RTS/a)^(-1/RTS) --> Y=N/(P*RTS) --> Y is linear in N
-! -(done) Changed calibration: h=(1/Rent)*(aH/aC)*c --> avg housing expenditure roughly 40% of consumption basket --> h*Rent/c=aH/aC=2/3 --> aH=(2/3)*aC
-!         n*Wage=c+Rent*h --> income=expenditure --> n*Wage=c+(aH/aC)*c=c*(aC+aH)/aC
-!         n=1-(1/Wage)*(aN/aC)*c --> n=1-(1/Wage)*(aN/aC)*(aC/(aC+aH))*n*Wage=1-n*(aN/(aC+aH)) --> n=(aC+aH)/(aC+aH+aN)=1/3 --> avg hours worked 1/3 of all available
-!         combine: aC+aH+aN=1 --> aC+aH=1/3 and aH=(2/3)*aC --> aC*5/3=1/3 --> aC=3/15, aH=2/15, aN=10/15
-! -Build beliefs:
-!  -(done) New subroutine Beliefs which computes regression coefficients
-!    -Within this, belief about Pension is computed, unlike other beliefs (which are conditional on (iHF,iHFnext)), this belief is conditional on iHF only
-!    -Need to check if pension belief working right
-!  -(done) In DP use beliefs to update next period's values of state variables
-!  -(done) Get rid of some of the references to PensionGrid because now using beliefs from linear function, however add write(PensionGrid) after it is computed in DP
-!  -(done) Added CoefsMin and CoefsMax to restrict beliefs. However, can't use them because if WageNext(1) is unrestricted but WageNext(2) is restricted, then interpolated value will be different from the value implied by the regression.
-!  -This needs testing
-!2016/06/01
-! -(done) Got rid of all references to deprINV1
-! -(done) Added calculation of PHnextMin(iLOC)=minimum possible price next period
-! -(done) Changed borrowing constraint to B(t+1)>-thetaRes*Hres*(1-deprH)-thetaInv*Hinv*(1-deprH-deprINV0). Note that this implies that NW>0 if theta<1. Thus changed grid to reflect this
-! -(done) Changing the borrowing constraint also required changing the if statement that determines what to do when constraint violated
-! -(done) To this if statement, added an extra piece of code, in case the recalculated Hres (when set to 0.01) still violated the constraint
-! -(done) In simulate added code so that Zind=1 for newborns
-! -(done) Add 1/zind to hoursind; zind to hours, pension, and laborincomeind calculations
-!2016/06/06
-! -(done) Move market clearing to its own function
-!2016/06/07
-! -(done) In DP, add ProbDeath to value function calculation
-! -(done) In Simulate: initialize AgeInd to realistic distribution, change updating of AgeIndNext, change calculation of NumRetired
-! -(done) Got rid of outputWelfAge, TempArrayI_nAge, temp02.txt. Everything about agents is now stored in outputWelf
-! -(done) Changed temp01.txt and temp03.txt to output00.m and output01.m
-! -(done) Checked that if set ProbDeath=[0 0 ... 1] and everything else same as old code, then results are the same (other than randomness)
-! -(done) In Clearmarkets multiplied Pension by Zind(i), changed input/output so that Pension is passed to Simulate
-! -(done) In Beliefs, changed so that Pension is regressed on Wage
-!2016/06/12
-! -(done) Declare nAgent as parameter in main, pass it to DP and Simulate, declare in OpenMP in Simulate
-! -(done) Add sort subroutine
-! -(done) Create subroutine InitAgeInd which simulates long time series. Its outputs are AgeInd (written to AgeInt.txt), NumRetired (passed to DP to compute Pension), NumDeadR,NumDeadW (passed to Simulate to reduce effect of idiosyncratic randomness due to death)
-! -(done) Replace initialization of AgeIndNext in Simulate by reading AgeInt.txt
-! -(done) In DP change calculation of PensionGrid. Where Price is being calculated, replace it by Wage*HoursDemand/NumRetired, where HoursDemand can be computed from from firm's equilibrium conditions if we know (Wage,PH1,PH2)
-! -(done) Change all references to 8 regressions, it is now 7 because PensionGrid comes from equilibrium
-! -(done) In Simulate: create DeathShock, sort it separately for workers and retirees to determine cutoffs for each (using NumDeadR and NumDeadW), then determine who dies
-! -(done) In main part of DP tax was declared private but should have been shared in OpenMP, now fixed
-! -(done) In InitAgeInd, got rid of parallelization - was causing randomness in NumDead
-! -(done) In older code, the retired believe their productivity is A(t+1)=A(t)*dZ(2), however this is a problem when dZ(2)~=1. Fixed by introducing variable Normalize
-! -This version works well, however the young start out with too much wealth. To fix this need agents to
-!  receive bequests later in life. Because this version has permanent income shocks, this version does not
-!  allow agents to recieve bequests later in life. Thus, next will switch to stationary shocks
-!2016/06/14
-! -(done) In DP: when skipping certain iDZnext for retired, change iDZnext.ne.2 to iDZnext.ne.iDZ
-! -(done) In DP: replace certain references to DZgrid by Normalize, where Normalize=1
-! -(done) In DP: add DZgrid to LaborIncome calculation
-! -(done) In DP: create iInd=(iDZ-1)*nNW+iNW and iIndNext. Use it when creating ValFunNext and using iStateNextL to call ValFunNext
-! -(done) pass iZind to ClearMarkets from Simulate, and to GetPolicy from ClearMarkets. Use iInd=(iZind-1)*nNW+iNW when calling on poliyc and value arrays
-! -(done) In GetPolicy: Do not normalize NW by Zind at start, do not multiply Zind and Hind by Zind at end
-! -(done) In Simulate: Change TrProbDZ(nDZ) to TrProbDZ(nDZ,nDZ), same for TrProbDZcum
-! -(done) Add coe to compute unconditional distribution of dZ and start agents iZindNext w/ unconditional
-! -(done) Replace code for computing ZindNext by iZindNext, set Zind=DZgrid(iDZ)
-! -(done) Changed how tiebreaker applies - only applies when difference b/w 1st and 2nd best in Vcond is very small
-! -(done) Added 0.0001*real(mod(i-1,11)+1-6) to reporting of Zind in outputWelf
-! -(done) Changed market clearing: a) mod(iClMkt,100) to mod(iClMkt,50), b) initial prices come from regression rather than previous prices
-! -(done) Changes initial iZind for those of AgeInd=1 so that it comes from unconditional distribution. Otherwise those w/ high iZind parents receive both higher iZind and higher bequest
-! -(done) NumRetired changed to real
-! -(done) nRegr changed to 8 (belief about bequest). In Beliefs added code to compute 8th regression. In Simulate restricting outcome of this by min and max
-! -(done) In InitAgeInd change the random calculation of NumDead to analytic, checked that its correct. Add calculation of BeqProb
-! -(done) In Simulate add BequestExp=Sum(ProbDeath*NWnext) as opposed to Bequest, which has Avg[NWnext|dead]. Using this BequestExp instead of Bequest in Simulate to compute beliefs and inheritance amount.
-! -(done) In DP added possibility of receiving bequest: NWnext and NWnextBeq. Now calling CHFIV twice
-! -(done) In Simulate computing Bbeq, HObeq, HIbeq and passing them to clearmarkets, where they are given to agents w/ BeqReceiver=1
-! -(done) In both DP and
-! -(done) Changed PensionIncome to (0.5+0.5*Z)*Pension from just Z*Pension in boht DP and ClearMarkets
-! -(done) In DP: for retired (iAge<=nRet) a) allow Hours>0, b) LaborIncome=AgeProd*Z*Wage*(1-tax)+PensionIncome. In ClearMarkets: for retired (iAge>nAge-nRet) a) allow Hours>0, b) LaborIncome=AgeProd*Z*Wage*(1-tax)+PensionIncome, c) PensionTax collected for anyone with HoursInd>0, instead of iAge<=nAge-nRet
-! -(done) Changed computation of NumRetired in Simulate to include only AgeInd(i).gt.nAge-nRet
-
-!2016/08/02
-! -(done) In writedata1 now writing various parameters so that no need to hardcode them when computing moments in matlab
-! -(done) Changed HFgrid(iHF) to HFgrid(iHF,iLOC). Added HFVgrid which measures which fraction of foreign owned housing is left vacant to locals (either actually vacant or foreigners live there). 1-HFVgrid can be rented out. This goes into market clearing conditions
-! -(done) Added parameter LeisureMin to wherever CommCost was, changed CommCost(iLOC) to CommCost(iLOC,:) where 2nd dimension has size 2, is for cost when working (1) versus retires (2)
-! -(done) Before, CommCost(iLOC,1) was applied to everyone. Fixed this so that CommCost(iLOC,2) applies to retired or those with Hours=0, CommCost(iLOC,1) applies to everyone else
-
-!2016/08/19
-! -(done) Created getpolicy0, which speeds things up by interpolating over NW last. The other dimensions reuse previously done calculations
-! -(done) Added taxprop. If (i) set taxprop=depr(OldCode)-depr(NewCode), (ii) set PropTaxRedist=0, (iii) when updating H in clearmarkets use (1-depr-taxprop) instead of (1-depr) then results identical to old code
-! -(done) Added HresMin
-! -(done) Added CluxCost and CluxCut
-
-!2016/09/03
-! - Adding rent control. nRC=0 if no rent control and nRC=1 if rent control
-! -(done) Changed size of 2nd dimension of policy,ValFunCond,TieBreaker from 2x (renter,owner) to (2+nRC)x (renter,owner,rent controlled renter)
-!  -This also includes reading and writing those functions
-
-!2016/11/02
-! -Added NWgridAll so that an agent's NWgrid is now conditional on (iAge,iDZ). This allows us to have finer grid with a low nNW
-! -To make code identical to old code, make NWgridAll be same as NWgrid, and not condition on (iAge,iDZ)
-!  -To do this, a) comment out any references to makenwgrid; b) write NWgrid.txt at the start of code
-
-! -In Simulate not including the collateral constraint as in DP. In principle it should not matter because optimal policy takes account of constraint. However should later check that constraint is not violated
-! -When calibration gets better must experiment w/ tiebreaker. If enough diversity, is TieBreaker=0 ok? Can we get away w/ a smaller TieBreaker when nAgent is bigger? Currently can't test this because high nAgent --> Wage is below grid
-! -In DP, Hchoice=0 when RP=0. Need to check that this is optimal (if housing is a good enough hedge, there may be demand for investment property at zero or even negative risk premiums). Can check this by expeding RPgrid to have negative values
-! -Need to check that in Simulate, once everything has converged, PensionBelief=Pension
-
-!2018/12/06
-! -Added persistent RC. To use:
-!  -For non-persistent RC set nRClast=1 and uncomment below lines 2758 and 8210 (last part doesn't actually matter but might as well)
-!   OR set nRClast=nLOC+1 and uncomment below lines 2758 and 8210
-!  -For persistent RC set nRClast=nLOC+1 and comment out below lines 2758 and 8210
-
-!2019/04/02
-! -Made changes to how persistence works. In particular, added variables flagRCstay and RCprobTemp to DP and Clearmarkets. I think (but not 100% sure) this doesn't end up changing any of the output 
-!  for the case with no persistence (nRC=1), the case with persistence (nRC=3). However, it fixes the case with no persistence (nRC=3) to be consistent with no persistence (nRC=1).
-! -In choosing RCreceiver(i), changed .lt. to .le. and .ge. to .gt. --> I think this is more consistent w/ how we set RCprob, however should make small difference since it just shifts 1 agent into RC
-! -Towards the end of DP added: ValFunCond(iState,(2+nRC)*nLOC+1)=ValFun0(iState,1), this doesn't affect output but makes it easier to diagnose errors when fixing bugs. Also simplified
-!  the section around valXX.dat to reflect the change to ValFunCond
-
       program ModelOfCity
       implicit none
       integer nWage,nRent1,nRent2,nRP1,nRP2,nH1,nH2,nNW,nHF,nAgg,nLOC,i
@@ -253,7 +64,6 @@
 !Create initial AgeInd distribution for simulate and compute number of retired and dead households
       call InitAgeInd(nAgent,nAge,nRet,NumDeadR,NumDeadW,NumRetired,
      1                NumBorn)
-!Baseline, NYC, and VAN models all have different DZgrid.txt
       call readdata(DZgrid,'DZgrid.txt',nAge,nDZ,nAge,nDZ)
       do j=1,nDZ
        tempR1=0
@@ -283,7 +93,6 @@
       end do
       end do
 
-!     Baseline Model
       TrProbDZ(1,1)=0.9299
       TrProbDZ(1,2)=0.0701
       TrProbDZ(2,1)=0.0392
@@ -298,57 +107,7 @@
       TrProbDZ(5,6)=0.100
       TrProbDZ(6,5)=0.050
       TrProbDZ(6,6)=0.950
-!     NYC Model
-!      TrProbDZ(1,1)=0.9299
-!      TrProbDZ(1,2)=0.0701
-!      TrProbDZ(2,1)=0.0392
-!      TrProbDZ(2,2)=0.9216
-!      TrProbDZ(2,3)=0.0392
-!      TrProbDZ(3,2)=0.0392
-!      TrProbDZ(3,3)=0.9216
-!      TrProbDZ(3,4)=0.0392
-!      TrProbDZ(4,3)=0.1802
-!      TrProbDZ(4,4)=0.8198
-!      TrProbDZ(5,5)=0.85
-!      TrProbDZ(5,6)=0.15
-!      TrProbDZ(6,5)=0.025
-!      TrProbDZ(6,6)=0.875
-!      TrProbDZ(6,7)=0.100
-!      TrProbDZ(7,6)=0.025
-!      TrProbDZ(7,7)=0.875
-!      TrProbDZ(7,8)=0.100
-!      TrProbDZ(8,7)=0.050
-!      TrProbDZ(8,8)=0.950
-!     VAN Model
-!      TrProbDZ(1,1)=0.9070
-!      TrProbDZ(1,2)=0.0930
-!      TrProbDZ(2,1)=0.0977
-!      TrProbDZ(2,2)=0.8046
-!      TrProbDZ(2,3)=0.0977
-!      TrProbDZ(3,2)=0.1083
-!      TrProbDZ(3,3)=0.7834
-!      TrProbDZ(3,4)=0.1083
-!      TrProbDZ(4,3)=0.3104
-!      TrProbDZ(4,4)=0.6896
-!      TrProbDZ(5,5)=0.9070
-!      TrProbDZ(5,6)=0.0930
-!      TrProbDZ(6,5)=0.0977
-!      TrProbDZ(6,6)=0.8046
-!      TrProbDZ(6,7)=0.0977
-!      TrProbDZ(7,6)=0.1083
-!      TrProbDZ(7,7)=0.7834
-!      TrProbDZ(7,8)=0.1083
-!      TrProbDZ(8,7)=0.1300
-!      TrProbDZ(8,8)=0.8700
 
-!      if(fracBeq.gt.0.00001) then
-!       do i=1,(nDZ/2)
-!!       DZgrid(i+(nDZ/2))=DZgrid(i)
-!        do j=1,(nDZ/2)
-!         TrProbDZ(i+(nDZ/2),j+(nDZ/2))=TrProbDZ(i,j)
-!        end do
-!       end do
-!      end if
       DeprGrid(1)=1.0
       !DeprGrid(2)=1.0
       DeprProb(1)=1.0!0.5
@@ -400,10 +159,6 @@
 
 !compute the social security tax, in dollar terms, that each household would receive
       tempR1=75101 !Average household labor income in 2016 for US
-!      tempR1=66406 !Average household labor income in 2010 for US
-!      tempR1=92000 !Average household labor income in 2016 for NYC
-!      tempR1=97878 !Average household labor income in 2016 for VAN (not needed for code)
-!the loop below is done for Baseline or NYC models, comment out for VAN
       tempR3=0
       do i=1,nDZ
        tempR2=tempR1*dZgridAvg(i) !average income of current group
@@ -420,35 +175,6 @@
        tempR3=tempR3+SSIdist(i)*real(UncondDist1(1,i))
       end do
 
-!Canada pension explanation:
-! 1) Old Age Security (OAS) guaranteed pension
-!    -Basic pension amount $6.8K/year to every household (households with post-retirement income above $71.6K receive reduced OAS, but very few retired households have such high income)
-!    -Funded by federal gov't general budget. In 2016-2017 $48.3B went to OAS, from a total of $143.2B personal taxes collected -> 34% of personal taxes
-!    -The average personal tax rate in Canada was 12%, so 4% of personal income was used to fund OAS. To compute 12% average tax rate, I needed average household income. For this use http://www.statcan.gc.ca/tables-tableaux/sum-som/l01/cst01/famil105a-eng.htm get number of individuals in each income group p and income of each group w (I used midpoint, and 1.5x$250K for top group). This gives sum(p.*w)=$1.19T total personal income. $143B personal tax / $1.19T personal income = 12%. For average personal income, divide $1.19B by 35.5M population and multiply by 2.5 household size to get $85.6K average household income in 2014. Compare this to $78.9K median in 2014 http://www.statcan.gc.ca/tables-tableaux/sum-som/l01/cst01/famil107a-eng.htm
-!    -Note that 4% is the average tax, however federal taxes are progressive so high earners pay more than 4% and low earners less than 4%
-! 2) Canada Pension Plan (CPP) pay-as-you go system which works like U.S. social security
-!    -Workers receive 25% of earnings on which contributions were made, up to 13K per year  (average Canadian receives 6.5K)
-!    -The earnings are defined (approximately) as average lifetime earnings
-!    -Contributions are 9% (half from employee, half from employer) on earnings up to 51.1K  (average Canadian income 50K -> pays 4.5K)
-!    -From same data I used to compute average income, I can compute the fraction of all income taxed at 9%: sum(min(w,53).*p)/sum(p.*w)=72.7%
-!    -This implies that the the average tax paid was 9%*0.727=6.5%
-!    -Note that 6.6% is the average tax, however this tax is regressive so high earners pay less than 6.5% and low earners pay more than 6.5%
-! Total tax: on average 4% for OAS (progressive) 6.5% for CPP (regressive) --> lets say 10.5% flat?
-! To compute distribution by group:
-! Avg Vancouvere income: 97878 --> 6.8K from OAS and min(0.25*97.878K,13K)=13K from CPP --> 19.8K total
-! Group 1: income 0.250*97.878K=24.47K  --> 6.8K from OAS and 6.1K from CPP --> 12.1K total
-! Group 2: income 0.704*97.878K=68.91K  --> 6.8K from OAS and 13K from CPP --> 19.8K total
-! Group 3: income 1.308*97.878K=128.02K --> 6.8K from OAS and 13K from CPP --> 19.8K total
-! Group 4: income 2.946*97.878K=288.35K --> 6.8K from OAS and 13K from CPP --> 19.8K total
-
-!the loop below is done for VAN model, comment out for NYC and baseline
-!      tempR3=0
-!      do i=1,nDZ
-!       SSIdist(i)=12.1
-!       if(mod(i,nDZ/2).ne.1) SSIdist(i)=19.8
-!       tempR3=tempR3+SSIdist(i)*real(UncondDist1(1,i))
-!      end do
-
 !The loop below is done for all cases
       do i=1,nDZ
        SSIdist(i)=SSIdist(i)/tempR3
@@ -464,7 +190,7 @@
       HFgrid1(2,1)=0.6        !high state, zone 1: intercept
       HFgrid1(1,2)=0.0        !low state,  zone 2: intercept
       HFgrid1(2,2)=0.6        !high state, zone 2: intercept
-!This is the fraction of propertis owned by foreigners that are kept vacant. 1-HFVgrid is the fraction they rent out to locals
+!This is the fraction of properties owned by foreigners that are kept vacant. 1-HFVgrid is the fraction they rent out to locals
       HFVgrid(1,1)=1.00 !low state,  zone 1
       HFVgrid(2,1)=1.00 !high state, zone 1
       HFVgrid(1,2)=1.00 !low state,  zone 2
@@ -484,7 +210,7 @@
       CommCostFin(1,2)=0.000
       CommCostFin(2,2)=CommCostFin(2,1)/3.0
 
-      DeathExp=0.0            !20% of estate value
+      DeathExp=0.0
       HresMin=0.25
       PriceBond=0.825
       thetaRes=0.90
@@ -497,15 +223,7 @@
       ElastCH=-0.5
       ElastCN=0.0
       chi0=1.0
-!The different lambda's and tau's matter for the voucher experiment only. For everything else labmda(1)=lambda(2)=lambdaBase and tau(1)=tau(2)=tauBase
-!For the voucher experiment there are two ways of doing it:
-!1) Regime switch from no vouchers (1) to vouchers (2). In this case:
-!  -set lambda0(2)<lambda0(1) (more progressive) and set tau0(2) s.t. total gov't surplus is equal to 1
-!  -set lambdaBase=lambda0(1) and tauBase=tau0(1), this is used to compute how much of the transfer is used for the voucher
-!2) No regime switch, just compare across models. In this case:
-!  -set lambda0(2)=lambda0(1) to be lower (more progressive) than in the baseline model
-!  -set tau0(2)=tau0(1) to have the same gov't surplus as in the baseline model
-!  -set lambdaBase and tauBase to be their values in the baseline model (not equal to lambda0 or tau0), this is used to compute how much of the transfer is used for the voucher
+!lambda and tau are for rent control, not used in out of town projet
       lambda0(1)=1.0
       lambda0(2)=1.0
       lambdaBase=1.0
@@ -561,49 +279,33 @@
 !aggregate output by sector: Hnext-(1-d)*H=nFirm * (x^(1/(1-RTSH))) * ((PH*RTSH/Wage)^(RTSH/(1-RTSH)))
 !if nFirm is proportional to nAgent (for simplicity normalize nFirm=nAgent) and if H0 is proportional to nAgent, then equilibrium is invariant to nAgent
 
-!rent control parameters (if no rent control set nRC=0 or RCshare=0
-
-!Baseline:
-!RCinccut(1)=RCinccut(2)=0
-!RChsize(1)=RChsize(2)=0
-!RCshare(1)=RCshare(2)=0
-!RCrentred(1)=RCrentred(2)=0
-!NYC:
-!RCinccut(1)=RCinccut(2) should be roughly 200% of avg income (avg income of rent controlled in NYC is 65% of non-rent controlled)
-!RCshare(1)=0.2148 and RCshare(2)=0.1329. These are shares of all square feet that are rent control, in order to match 0.169 and 0.104 fraction of all rental units that are rent controlled
-!RCrentred(1)=RCrentred(2)=0.5. This is the discount relative to market rent
-!RChsize(1)=RChsize(2)=0.1*RCinccut should be roughly 20% of average income. This is the maximum rent that can be paid for a rent controlled apartment
-!VAN
-!RCinccut(1)=RCinccut(2) should be 53% (52k limit and 98.78 avg)
-!RCshare(1)=?? and RCshare(2)=??. These are shares of all square feet that are rent control, in order to match 0.173 and 0.158 fraction of all rental units that are rent controlled
-!RCrentred(1)=RCrentred(2)=0.47. This is the discount relative to market rent
-!RChsize(1)=RChsize(2)=0.1*RCinccut we don't know the right number to use, so just using the one for NYC
+!rent control parameters - not used for the Out of Town Buyers project
       MedIncomeWorker=0.292 !medium income
       kappa2=0.01
       kappa3=0.01
-      RCinccut(1,1)=MedIncomeWorker*kappa2             !maximum income to qualify for rent control
-      RCinccut(2,1)=RCinccut(1,1)            !maximum income to qualify for rent control
+      RCinccut(1,1)=MedIncomeWorker*kappa2
+      RCinccut(2,1)=RCinccut(1,1)
       RCinccut(1,2)=RCinccut(1,1)
       RCinccut(2,2)=RCinccut(1,1)
-      RChsize(1,1)=MedIncomeWorker*kappa3  !maximum rent of a rent controlled apartment: (1-RCrentred)*Rent*H < RCHsize = AMI*0.64
+      RChsize(1,1)=MedIncomeWorker*kappa3
       RChsize(2,1)=MedIncomeWorker*kappa3
       RChsize(1,2)=MedIncomeWorker*kappa3
       RChsize(2,2)=MedIncomeWorker*kappa3
-      RCrentred(1,1)=0.0 !Average discount for regulated units
-      RCrentred(2,1)=0.0 !Average discount for regulated units
+      RCrentred(1,1)=0.0
+      RCrentred(2,1)=0.0
       RCrentred(1,2)=0.0
       RCrentred(2,2)=0.0
-      RCshare(1,1)=0.0  !Share of all square feet that are rent controlled
-      RCshare(2,1)=0.0  !Share of all square feet that are rent controlled
+      RCshare(1,1)=0.0
+      RCshare(2,1)=0.0
       RCshare(1,2)=0.0
       RCshare(2,2)=0.0
       RCprobStay(1)=0.5
       RCprobStay(2)=0.5
-      RCsubs(1,1)=0.0!0.125!0.0 !--> targeted such that 30% of total construction costs (wage bill) for RC housing is covered by subsidies
-      RCsubs(2,1)=0.0!0.125!0.0
-      RCsubs(1,2)=0.0!0.125!0.0
-      RCsubs(2,2)=0.0!0.125!0.0
-      flagRCstay(1)=0  !1=persistence in stying in RC, 0=no persistence. Note that when nRClast=1 then value of flagRCstay doesn't matter, but when nRClast>1 then need to set flagRCstay=0
+      RCsubs(1,1)=0.0
+      RCsubs(2,1)=0.0
+      RCsubs(1,2)=0.0
+      RCsubs(2,2)=0.0
+      flagRCstay(1)=0
       flagRCstay(2)=0
 
       WageGrid(1)=1.075
@@ -612,21 +314,19 @@
       WageGrid(4)=1.150
 
       Rent1Grid(1)=0.08
-      Rent1Grid(2)=0.12!Rent1Grid(1)+0.06
-      Rent1Grid(3)=0.15!Rent1Grid(1)+0.12
-      Rent1Grid(4)=0.19!Rent1Grid(1)+0.18
+      Rent1Grid(2)=0.12
+      Rent1Grid(3)=0.15
+      Rent1Grid(4)=0.19
       Rent2Grid(1)=0.08
-      Rent2Grid(2)=0.12!Rent2Grid(1)+0.05
-      Rent2Grid(3)=0.15!Rent2Grid(1)+0.10
-      Rent2Grid(4)=0.19!Rent2Grid(1)+0.15
+      Rent2Grid(2)=0.12
+      Rent2Grid(3)=0.15
+      Rent2Grid(4)=0.19
 
       RP1grid(1)=0.0000
       RP1grid(2)=0.0050
-      !RP1grid(3)=0.005
 
       RP2grid(1)=0.0000
       RP2grid(2)=0.0050
-      !RP2grid(3)=0.005
 
       H1grid(1)=0.09
       H1grid(2)=0.11
@@ -634,33 +334,6 @@
       H2grid(1)=0.43
       H2grid(2)=0.47
       H2grid(3)=0.51
-
-!      NWgrid(1)=0.000
-!      NWgrid(2)=0.001
-!      NWgrid(3)=0.010
-!      NWgrid(4)=0.025
-!      NWgrid(5)=0.045
-!      NWgrid(6)=0.070
-!      NWgrid(7)=0.100
-!      NWgrid(8)=0.140
-!      NWgrid(9)=0.200
-!      do i=10,nNW
-!       NWgrid(i)=NWgrid(i-1)+(NWgrid(i-1)-NWgrid(i-2))*1.05
-!      end do
-
-
-
-!      tempR1=NWmax!NWbound(i,2)*1.5
-!      if(tempR1.lt.0.5) tempR1=0.5
-!      if(tempR1.ge.0.9*NWmax) tempR1=0.9*NWmax
-!      tempR2=(tempR1-NWmin)*0.1/((1.1**real(nNW-2))-1.0)
-!      NWgrid(1)=NWmin
-!      do j=2,nNW-1
-!       NWgrid(j)=NWgrid(j-1)+tempR2*(1.1**real(j-2))
-!!       write(6,*) j,NWgrid(j)
-!      end do
-!      NWgrid(nNW)=NWmax
-
 
       tempR1=NWmax!NWbound(i,2)*1.5
       if(tempR1.lt.0.5) tempR1=0.5
@@ -853,7 +526,6 @@
 !      call writedata(RegcoefsBeqMax,'CoefBx.txt',
 !     1              2*nBeqDist,nHF*nHF,2*nBeqDist,nHF*nHF)
 
-
 !      call makenwgrid(nAge,nDZ,nNW,NWmin,NWmax)
 
       call itime(mytime)
@@ -906,147 +578,38 @@
      1 RCshareAll,fracSameRC,RCsubs,ProfitRedist,lambda0,tau0,
      1 lambdaBase,tauBase)
 
-!      call makenwgrid(nAge,nDZ,nNW,NWmin,NWmax)
-
-!the code below updates various quantities to match certain moments rather than doing this by hand
-! -use pop1/(pop1+pop2) to update RTSH
-! -use Hres to update H1grid and H2grid
-! -use Rent1/Rent2 to update commcost (should be 1.63)
-! -use Rent1 to update Rent1grid, Rent2 to update Rent2grid
-! -use average house size to update RChsize (should be equal to average in each zone)
-! -use average income to update RCinccut (should be 50% of average income)
-! -use RC1/Renters1 and RC2/Renters2 to update RCshare (should be 53% and 24%)
+!set tempI1=1 only when doing SMM. when parameters have converged, set this to 0 (for example, for any experiments)
       tempI1=0
       if(tempI1.eq.1) then
 
-!no longer using CommCost to match rent difference, using Z1shiftAll instead
-!      tempR1=CommCost(2,1)
-!      CommCost(2,1)=CommCost(2,1)+0.01*(2.78-rentDiff)    !NYC: 2.78 ratio of Z1 to Z2 rent per square foot
-!      CommCost(2,2)=CommCost(2,1)/3.0
-!      write(6,'(a,f9.5,a,f9.5,a,f9.5)')
-!     1 'OLD CommCost=',tempR1,' NEW CommCost=',CommCost(2,1),
-!     1 ' rentDiff=',rentDiff
-
-!no longer using CommCost to match rent difference, using Z1shiftAll instead
       tempR1=Z1shiftAll
-      Z1shiftAll=Z1shiftAll+0.005*(1.03-rentDiff)    !NYC: 2.78 ratio of Z1 to Z2 rent per square foot
+      Z1shiftAll=Z1shiftAll+0.005*(1.03-rentDiff)
       write(6,'(a,f9.5,a,f9.5,a,f9.5)')
      1 'OLD Z1shiftAll=',tempR1,' NEW Z1shiftAll=',Z1shiftAll,
      1 ' rentDiff=',rentDiff
 
       tempR1=Z1shiftSize(1)
-      Z1shiftSize(1)=Z1shiftSize(1)+0.002*(1.12-incDiff)   !NYC: 1.45, VAN: 0.95
+      Z1shiftSize(1)=Z1shiftSize(1)+0.002*(1.12-incDiff)
       if(Z1shiftSize(1).lt.1.00) Z1shiftSize(1)=1.00
       write(6,'(a,f9.5,a,f9.5,a,f9.5)')
      1 'OLD Z1shiftSize(1)=',tempR1,' NEW Z1shiftSize(1)=',
      1 Z1shiftSize(1),' incDiff=',incDiff
 
       tempR1=Z1shiftSize(2)
-      Z1shiftSize(2)=Z1shiftSize(2)+0.005*(0.84*fracRet(2)-fracRet(1))    !NYC: 0.91, VAN: 0.93
+      Z1shiftSize(2)=Z1shiftSize(2)+0.005*(0.84*fracRet(2)-fracRet(1))
       if(Z1shiftSize(2).lt.1.00) Z1shiftSize(2)=1.00
       write(6,'(a,f9.5,a,f9.5,a,f9.5,f9.5)')
      1 'OLD Z1shiftSize(2)=',tempR1,' NEW Z1shiftSize(2)=',
      1 Z1shiftSize(2),' fracRet=',fracRet(1),fracRet(2)
 
       tempR1=HBARloc1(1)
-      HBARloc1(1)=HBARloc1(1)*(1.0+2.0*(0.228-popShare1))    !NYC: 10.5% of total lives in Manhattan
+      HBARloc1(1)=HBARloc1(1)*(1.0+2.0*(0.228-popShare1))
       HBARloc1(2)=HBARloc1(2)*(1.0+2.0*(0.228-popShare1))
       if(HBARloc1(1).lt.0.01) HBARloc1(1)=0.01
       if(HBARloc1(2).lt.0.01) HBARloc1(2)=0.01
-      !HBARloc1(1)=HBARloc2(1)*0.0238                          !NYC: 0.0238, VAN: 0.061
-      !HBARloc1(2)=HBARloc2(2)*0.0238
       write(6,'(a,f9.5,a,f9.5,a,f8.4)')
      1 'OLD HBARloc1=',tempR1,' NEW HBARloc1=',HBARloc1(1),
      1 ' popShare1=',popShare1
-
-!      do iHF=1,nHF
-
-!      tempR1=RCinccut(1,iHF)
-!      RCinccut(1,iHF)=0.75*RCinccut(1,iHF)+0.25*(0.38*MedIncomeWorker)
-!      RCinccut(2,iHF)=RCinccut(1,iHF)
-!      if(iHF.eq.1) then
-!      write(6,'(a,f8.4,a,f8.4,a,f8.4)')
-!     1 'OLD RCinccut=',tempR1,' NEW RCinccut=',RCinccut(1,iHF),
-!     1 ' MedIncome=',MedIncomeWorker                !NYC: 2.0, VAN: 0.53
-!      end if
-
-!      RChsize(1,iHF)=0.75*RChsize(1,iHF)+0.25*(0.64*MedIncomeWorker)                     !NYC: 0.2, VAN: 0.2
-!      RChsize(2,iHF)=0.75*RChsize(2,iHF)+0.25*(0.64*MedIncomeWorker)                     !NYC: 0.2, VAN: 0.2
-
-!      tempR1=RCshare(1,iHF)
-!      !RCshare(1,iHF)=RCshare(1,iHF)+0.25*(0.169-RCshareRent(1,iHF))                   !NYC: 0.169, VAN: 0.173
-!      RCshare(1,iHF)=RCshare(1,iHF)+0.25*(0.1299-RCshareAll(1,iHF))
-!      if(RCshare(1,iHF).lt.0.00) RCshare(1,iHF)=0.00
-!      if(RCshare(1,iHF).gt.0.99) RCshare(1,iHF)=0.99
-!      if(iHF.eq.1) then
-!      write(6,'(a,f8.4,a,f8.4,a,f8.4)')
-!     1 'OLD RCshare1=',tempR1,' NEW RCshare1=',RCshare(1,iHF),
-!     1 ' RCshareAll1=',RCshareAll(1,iHF)
-!      end if
-
-!      tempR1=RCshare(2,iHF)
-!      !RCshare(2,iHF)=RCshare(2,iHF)+0.25*(0.104-RCshareRent(2,iHF))                   !NYC: 0.104, VAN: 0.158
-!      RCshare(2,iHF)=RCshare(2,iHF)+0.25*(0.0469-RCshareAll(2,iHF))
-!      if(RCshare(2,iHF).lt.0.00) RCshare(2,iHF)=0.00
-!      if(RCshare(2,iHF).gt.0.99) RCshare(2,iHF)=0.99
-!      if(iHF.eq.1) then
-!      write(6,'(a,f8.4,a,f8.4,a,f8.4)')
-!     1 'OLD RCshare2=',tempR1,' NEW RCshare2=',RCshare(2,iHF),
-!     1 ' RCshareAll2=',RCshareAll(2,iHF)
-!      end if
-
-!      end do
-      
-!      tempR1=RCprobStay(1)
-!      RCprobStay(1)=RCprobStay(1)+0.25*(0.231-fracSameRC) !NYC: 0.231
-!      if (RCprobStay(1).lt.0.00) RCprobStay(1)=0.00
-!      if (RCprobStay(1).gt.1.00) RCprobStay(1)=1.00
-!      RCprobStay(2)=RCprobStay(1)
-!      write(6,'(a,f8.4,a,f8.4,a,f8.4)')
-!     1 'OLD RCprobStay=',tempR1,' NEW RCprobStay=',RCprobStay(1),
-!     1 ' fracSameRC=',fracSameRC
-
-!      write(6,'(a,f8.4,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'OLD Rent1grid=',(Rent1grid(j),j=1,nRent1),' Rent1=',Rent(1)
-!      Rent1grid(1)=Rent(1)-.5*0.02-0.02
-!      Rent1grid(2)=Rent(1)-.5*0.02
-!      Rent1grid(3)=Rent(1)+.5*0.02
-!      Rent1grid(4)=Rent(1)+.5*0.02+0.02
-!      write(6,'(a,f8.4,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'NEW Rent1grid=',(Rent1grid(j),j=1,nRent1)
-!      call writedata(Rent1Grid,'R1grid.txt',nRent1,1,nRent1,1)
-
-!      write(6,'(a,f8.4,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'OLD Rent2grid=',(Rent2grid(j),j=1,nRent2),' Rent2=',Rent(2)
-!      Rent2grid(1)=Rent(2)-.5*0.02-0.02
-!      Rent2grid(2)=Rent(2)-.5*0.02
-!      Rent2grid(3)=Rent(2)+.5*0.02
-!      Rent2grid(4)=Rent(2)+.5*0.02+0.02
-!      write(6,'(a,f8.4,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'NEW Rent2grid=',(Rent2grid(j),j=1,nRent1)
-!      call writedata(Rent2Grid,'R2grid.txt',nRent2,1,nRent2,1)
-
-!      write(6,'(a,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'OLD H1grid=',(H1grid(j),j=1,nH1),' H1=',Hres(1)
-!      H1grid(1)=Hres(1)*0.6
-!      H1grid(2)=Hres(1)
-!      H1grid(3)=Hres(1)*1.4
-!      if(H1grid(3).gt.HBARloc1(1)) H1grid(3)=Hres(1)*0.5+HBARloc1(1)*0.5
-!      if(H1grid(3).lt.Hres(1)) H1grid(3)=Hres(1)+0.1
-!      write(6,'(a,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'NEW H1grid=',(H1grid(j),j=1,nH1)
-!      call writedata(H1grid,'H1grid.txt',nH1,1,nH1,1)
-
-!      write(6,'(a,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'OLD H2grid=',(H2grid(j),j=1,nH1),' H2=',Hres(2)
-!      H2grid(1)=Hres(2)*0.6
-!      H2grid(2)=Hres(2)
-!      H2grid(3)=Hres(2)*1.4
-!      if(H2grid(3).gt.HBARloc2(1)) H2grid(3)=Hres(2)*0.5+HBARloc2(1)*0.5
-!      if(H2grid(3).lt.Hres(2)) H2grid(3)=Hres(2)+0.1
-!      write(6,'(a,f8.4,f8.4,f8.4,a,f8.4)')
-!     1 'NEW H2grid=',(H2grid(j),j=1,nH2)
-!      call writedata(H2grid,'H2grid.txt',nH2,1,nH2,1)
 
       end if
 
@@ -1998,7 +1561,7 @@ c$omp& UtilConst0,UtilConst1,UtilConst2,Pension,HoursConst2,HoursConst3,
 c$omp& HoursGrid,HoursGrid0,flagMinVal,iHoursChoice,TaxableIncome,
 c$omp& HSVtax,HSVtaxBase,HresMinVoucher,iRClast,iRClastNext)
 c$omp do
-!Tis is the main part of the code. Here we go through possible location, consumption, and residential investment choices and find the optimal one
+!This is the main part of the code. Here we go through possible location, consumption, and residential investment choices and find the optimal one
       do iAgg=1,nAgg!2187,2187!1,nAgg
        iHF=mod(iAgg-1,nHF)+1
        tempI1=1+(iAgg-iHF)/nHF
@@ -2086,13 +1649,13 @@ c$omp do
 
        do iRenter=1,2+nRC
        do iLOC=1,nLOC
-       
+
         tempI1=0
         if(iRClast.eq.1.or.
      1     (iRClast.eq.2.and.iRenter.eq.3.and.iLOC.eq.1).or.
      1     (iRClast.eq.3.and.iRenter.eq.3.and.iLOC.eq.2)) tempI1=1
         if(tempI1.eq.0) goto 9869
-       
+
         VmaxCond=10*MinVal
         iChoiceDisc=(iRenter-1)*nLOC+iLOC
         if(iRenter.ne.2+nRC.or.nRClast.eq.1) then
@@ -2239,7 +1802,7 @@ c$omp do
         if(iLOC.eq.2.and.Cchoice.gt.CluxCut(flagRet)) then
          CluxCost0=CluxCost(flagRet)*(Cchoice-CluxCut(flagRet))
         end if
-        
+
         if(abs(tau0(iHF)).lt.0.00001.and.
      1     abs(lambda0(iHF)-1.0).lt.0.00001) then
 !!old way of computing hours - works if HSV tax is zero
@@ -2345,11 +1908,6 @@ c$omp do
 
        do iHchoice=1,nHchoiceTemp
         if(flagMinVal.eq.1) goto 1197
-!We are not allowing Hchoice>0 if iRP=RPgrid(1).
-!If the return on housing is constant, then household is indifferent between investing in housing or in bonds when RP=0 (strictly prefers housing if RP>0) and we are assuming that an indifferent agent chooses bonds
-!If the return on housing is volatile, and if housing is not an important hedging asset, then when RP=0 household will always prefer the bond to a risky asset with the same expected return. Thus this is an inocuous restriction
-!If the return on housing is volatile, and if housing is a good enough hedge, then households might demand investment assets even when RP<=0.
-! For this reason, when a model is converged, need to expand RPgrid s.t. RPgrid(1)<0 and check whether some households buy investment property when RP<=0
         if(iRenter.eq.1.or.iRenter.eq.3.or.
      1     (iLOC.eq.1.and.iRP1.eq.1).or.
      1     (iLOC.eq.2.and.iRP2.eq.1)) then
@@ -2585,30 +2143,6 @@ c$omp do
 
          if(TrProb.lt.0.0001) goto 1195
 
-!If NWgridAll does not depend on (iAge,iDZ) can define NWgridNext here, otherwise must be later in code
-!         do iNWnext=1,nNW
-!          if(iAge.eq.1) then
-!           NWgridNext(iNWnext)=
-!     1      NWgridAll((nAge+1-iAge-1)*nDZ+iDZnext,iNWnext)
-!          else
-!           NWgridNext(iNWnext)=
-!     1      NWgridAll((nAge+2-iAge-1)*nDZ+iDZnext,iNWnext) !When  solving 19 year old's (iAge=2) problem, need to use ValFun and NWgrid of 20 year old
-!          end if
-!         end do
-
-!If permanent shocks then NWnext depends on DZnext and NWnext must be defined here, otherwise define NWnext ealrier
-!         if(iRenter.eq.1.or.iRenter.eq.3) then
-!          NWnext=Bnext/Normalize
-!          NWnextBeqRec=NWnext+BeqGrid(iAgg,iHFnext)
-!         else
-!          NWnext=(Bnext+PHnext(iLOC)*
-!     1            (Hres+Hchoice*RCavgrent(iLOC,iHF))*(1.0-deprH(iLOC)-taxprop)-
-!     1            PHnext(iLOC)*deprINV0*Hchoice*RCavgrent(iLOC,iHF))/Normalize
-!          NWnextBeqRec=NWnext+BeqGrid(iAgg,iHFnext)
-!         end if
-!If permanent shocks then NWnext depends on DZnext and iNWnext must be defined here, otherwise define iNWnext ealrier
-!         call findspot(NWgridNext,nNW,NWnext,
-!     1        nint(0.5*real(nNW)),iNWnext)
          iIndNext=(iRClastNext-1)*nDZ*nNW+(iDZnext-1)*nNW+iNWnext
          iStateNextL=(iIndNext-1)*nAgg+iAgg
          iStateNextH=iStateNextL+nAgg
@@ -2852,16 +2386,6 @@ c$omp do
      1   iRP1.eq.1.and.iRP2.eq.1.and.iH1.eq.2.and.iH2.eq.2.and.
      1   iHF.eq.1.and.mod(iNW,4).eq.0.and.iAge.ge.1.and.
      1   mod(iDZ,3).eq.2) then
-!      if(iWage.eq.3.and.
-!     1   ((iRent1.eq.3.and.iRent2.eq.3.and.iHF.eq.1).or.
-!     1    (iRent1.eq.3.and.iRent2.eq.3.and.iHF.eq.1)).and.
-!     1   iRP1.eq.1.and.iRP2.eq.1.and.iH1.eq.2.and.iH2.eq.2.and.
-!     1   mod(iNW,4).eq.0.and.
-!     1   iAge.ge.1.and.iDZ.eq.2) then
-!      if(iWage.eq.3.and.iRent1.eq.4.and.iRent2.eq.4.and.
-!     1   iRP1.eq.1.and.iRP2.eq.1.and.iH1.eq.2.and.iH2.eq.2.and.
-!     1   iHF.eq.1.and.iNW.ge.1.and.iAge.ge.1.and.iDZ.eq.2) then
-       !iChoiceDisc=(iRenter-1)*nLOC+iLOC
        iChoiceDisc=tempI1
        iLOC=mod(iChoiceDisc-1,nLOC)+1
        iRenter=((iChoiceDisc-iLOC)/nLOC)+1
@@ -3159,19 +2683,6 @@ c$omp end parallel
         end do
        end do
 
-!        do iState=1,nAgg*nInd
-!         ValFunCond((i-1)*nAgg*nInd+iState,(nRC+2)*nLOC+1)=
-!     1        ValFunCond((i-1)*nAgg*nInd+iState,1)
-!        do tempI1=2,(2+nRC)*nLOC
-!         if(ValFunCond((i-1)*nAgg*nInd+iState,tempI1).gt.
-!     1      ValFunCond((i-1)*nAgg*nInd+iState,(nRC+2)*nLOC+1)) then
-!          ValFunCond((i-1)*nAgg*nInd+iState,(nRC+2)*nLOC+1)=
-!     1      ValFunCond((i-1)*nAgg*nInd+iState,tempI1)
-!         end if
-!        end do
-!        end do
-
-
 !Compute derivatives of valfun w/ respect to NW
 c$omp parallel
 c$omp& default(none)
@@ -3235,17 +2746,7 @@ c$omp do
 c$omp end do
 c$omp end parallel
 
-
       end do   !i
-
-!        do i=1,nAge*nAgg*nInd
-!        ValFunCond(i,(nRC+2)*nLOC+1)=ValFunCond(i,1)
-!        do tempI1=2,(2+nRC)*nLOC
-!         if(ValFunCond(i,tempI1).gt.ValFunCond(i,(nRC+2)*nLOC+1)) then
-!          ValFunCond(i,(nRC+2)*nLOC+1)=ValFunCond(i,tempI1)
-!         end if
-!        end do
-!        end do
 
 !Start off with a realistic age distribution
       call readdata(Cind,'AgeInt.txt',nAgent,1,nAgent,1)
@@ -3547,17 +3048,6 @@ c$omp end parallel
        end do
  2912  continue
       end do
-
-!      do i=1,nAgent
-!       if(AgeInd(i).eq.1) then
-!        Bind(i)=0
-!        HresIndLast(i)=0
-!        HindLast(i)=0
-!        RenterIndLast(i)=1
-!       end if
-!       BeqReceiver(i)=0
-!       if(BeqShock(i).le.BeqShock0(nint(NumDead))) BeqReceiver(i)=1
-!      end do
 
       if(t.gt.1) then
        RegRHS(1)=1
@@ -3928,51 +3418,6 @@ c$omp end parallel
 
       call sort(DeathShockRbeq,nAgent,DeathShockIndex)
 
-
-
-!This piece of code renormalizes zshock s.t. everyone of same age and iZ is evenly spread on (0,1)
-!Not doing this anymore because w/ bequesters, conditioning on iZ leads to pretty small groups
-!c$omp parallel
-!c$omp& default(none)
-!c$omp& shared(j,nAge,nDZ,nAgent,AgeIndNext,iZind,DeathShockWbeq,BeqShock)
-!c$omp& private(tempI1,tempI2,tempI3,i,DeathShockRbeq,DeathShockIndex)
-!c$omp do
-!      do j=1,nAge
-!       do tempI1=1,nDZ
-!        tempI2=0
-!        tempI3=0
-!        do i=1,nAgent
-!         DeathShockRbeq(i)=10000
-!         if(AgeIndNext(i).eq.j) then
-!          tempI3=tempI3+1
-!          if(iZind(i).eq.tempI1) then
-!           tempI2=tempI2+1
-!           DeathShockRbeq(i)=DeathShockWbeq(i)  !contains shock for agents of right Age and iZ, 10000 for everyone else
-!          end if
-!         end if
-!        end do
-!        call sort(DeathShockRbeq,nAgent,DeathShockIndex)
-!        do i=1,tempI2
-!         if(tempI2.eq.1) then
-!          BeqShock(DeathShockIndex(i))=0.5
-!         else
-!!           BeqShock(i)=rand()
-!!          BeqShock(DeathShockIndex(i))=(1.0/real(tempI2+1))+
-!!     1                                 (real(i-1)/real(tempI2+1))+
-!!     1         0.0001*(DeathShockWbeq(DeathShockIndex(i))-0.5)   !zshock rescaled so that everyone of same age and iZ is evenly spread on (0,1)
-!          BeqShock(DeathShockIndex(i))=real(i-1)/real(tempI2-1)+
-!     1                     0.0001*(DeathShockWbeq(DeathShockIndex(i))-0.5)   !zshock rescaled so that everyone of same age and iZ is evenly spread on (0,1)
-!          if(BeqShock(DeathShockIndex(i)).lt.0.00001)
-!     1       BeqShock(DeathShockIndex(i))=0.00001
-!          if(BeqShock(DeathShockIndex(i)).gt.0.99999)
-!     1       BeqShock(DeathShockIndex(i))=0.99999
-!         end if
-!        end do
-!       end do
-!      end do
-!c$omp end do
-!c$omp end parallel
-
       do i=1,nAgent
        BeqShock(i)=DeathShockWbeq(i)
        tempI2=1
@@ -3996,38 +3441,6 @@ c$omp end parallel
        end if
        !ZindNext(i)=DZgrid(AgeIndNext(i),iZindNext(i))          !Stationary Shock
       end do !i
-
-!Permanent shock
-!Set Avg[Z|Age]=1 so that a small nAgent doesn't add as much idiosyncratic risk
-!      do tempI1=1,nAge-nRet
-!       tempR1=0
-!       tempI2=0
-!       do i=1,nAgent
-!        if(AgeIndNext(i).eq.tempI1) then
-!         tempR1=tempR1+ZindNext(i)
-!         tempI2=tempI2+1
-!        end if
-!       end do
-!       tempR1=tempR1/real(tempI2)
-!       do i=1,nAgent
-!        if(AgeIndNext(i).eq.tempI1) then
-!         ZindNext(i)=ZindNext(i)/tempR1
-!        end if
-!       end do
-!      end do
-!Stationary shock
-!      tempR1=0
-!      tempI1=0
-!      do i=1,nAgent
-!       if(AgeIndNext(i).le.nAge-nRet) then
-!        tempR1=tempR1+ZindNext(i)
-!        tempI1=tempI1+1
-!       end if
-!      end do
-!      tempR1=tempR1/real(tempI1)
-!      do i=1,nAgent
-!       ZindNext(i)=ZindNext(i)/tempR1
-!      end do
 
       if(nDepr.gt.1) then
        do i=1,nAgent
@@ -4188,7 +3601,7 @@ c$omp end parallel
         if(abs(output(t,i)).gt.10000000) output(t,i)=0
        end do
       end do
-      
+
       write(6,*) 'outside'
       write(6,*) RCshare(1,1),RCshare(2,1),RCshare(1,2),RCshare(2,2)
       write(6,*) RCrentred(1,1),RCrentred(2,1),RCrentred(1,2),
@@ -5165,371 +4578,6 @@ c$omp end parallel
      1 tempR7/real(TotYears-100)
 
       end
-
-!--------------------------------------------------------------
-!This computes some moments from the simulated data
-      SUBROUTINE computemoments(TotYears,nAgent,nLOC,nDZ,nAge,nRet,nHF,
-     1 DZgrid,SSIdist,AgeProd,RCrentRed,taxss,PriceBond,deprH,taxprop,
-     1 taxpropOOT,NumBorn,output,outputWelf,outputErr,
-     1 popShare1,rentDiff,incDiff,Rent,Hres,AvgHomeRenter,AvgIncome,
-     1 AvgIncomeWorker,MedIncomeWorker,RCshare,RCshareRent,
-     1 fracRet,HFgrid0,HFgrid1)
-      implicit none
-      integer TotYears,nAgent,nLOC,nAge,nRet,t,i,j,iDZ,nDZ,nHF,tempI1
-      real output(TotYears,50),outputWelf(TotYears*nAgent,15)
-      real outputErr(TotYears,7)
-      real Rent(nLOC),PH(nLOC),Hres(nLOC),HresRC(nLOC),HresRenter(nLOC)
-      real nLOCall(nLOC),nLOCrent(nLOC),nLOCrc(nLOC),nLOCretmkt(nLOC)
-      real LIavg(nLOC),LIMKTavg(nLOC),Pension,Wage,LaborIncome
-      real RCrentRed(nLOC,nHF)
-      real PHmult(nLOC),NWavg(nLOC),CIavg(nLOC),taxss
-      real tempR1,tempR2,tempR3,tempR4,tempR5,tempR6,tempR7,tempR8
-      real DZgrid(nAge,nDZ),SSIdist(nDZ),AgeProd(nAge)
-      real taxprop(nHF,nLOC),deprH(nLOC),RCshare(nLOC,nHF)
-      real popShare1,rentDiff,AvgHomeRenter(nLOC),AvgIncome,Bpos,Bneg
-      real AvgIncomeWorker,MedIncomeWorker,RentToIncome
-      real RCshareRent(nLOC,nHF),RCavgRent(nLOC,nHF),CapIncome,PriceBond
-      real nLOCret(nLOC),fracRet(nLOC),taxpropOOT(nLOC)
-      real GiniNWworker,GiniNWall,HFgrid0(nHF,nLOC),HFgrid1(nHF,nLOC)
-      real LIavgAll,LIavgWorker,NWavgAll,NWavgWorker
-      real NWallSample(10000,1),NWworkerSample(10000,1)
-      real LIworkerSample(10000,1)
-      integer countall,countworker,sortIndex(10000,1),iHF
-      integer countworker1
-      real AvgBeq,NumBorn,incDiff,ForDemTot(nLOC)
-      real PropTaxIncomeAvg(nHF),countHF(nHF)
-      real HouseValueAvg(nHF),HouseValueForeignAvg(nHF)
-
-      do iHF=1,nHF
-       PropTaxIncomeAvg(iHF)=0
-       HouseValueAvg(iHF)=0
-       HouseValueForeignAvg(iHF)=0
-       countHF(iHF)=0
-      end do
-      AvgBeq=0
-      LIavgAll=0
-      LIavgWorker=0
-      NWavgAll=0
-      NWavgWorker=0
-      countall=0
-      countworker=0
-      do i=1,nLOC
-       do iHF=1,nHF
-        RCavgrent(i,iHF)=1.0-RCshare(i,iHF)+
-     1                   RCshare(i,iHF)*(1.0-RCrentred(i,iHF))
-       end do
-       Rent(i)=0
-       PH(i)=0
-       Hres(i)=0
-       HresRC(i)=0
-       HresRenter(i)=0
-       nLOCall(i)=0
-       nLOCrent(i)=0
-       nLOCrc(i)=0
-       nLOCretmkt(i)=0
-       nLOCret(i)=0
-       NWavg(i)=0
-       LIavg(i)=0
-       CIavg(i)=0
-       LIMKTavg(i)=0
-      end do
-      tempR1=0
-      tempR2=0
-      tempR3=0
-      tempR4=0
-
-      countworker1=0
-      do t=101,TotYears
-       AvgBeq=AvgBeq+output(t,9)
-       Rent(1)=Rent(1)+output(t,3)
-       Rent(2)=Rent(2)+output(t,4)
-       HresRC(1)=HresRC(1)+output(t,22)  !HresRC1
-       HresRC(2)=HresRC(2)+output(t,23)  !HresRC2
-       HresRenter(1)=HresRenter(1)+output(t,16)  !HresRenter1
-       HresRenter(2)=HresRenter(2)+output(t,18)  !HresRenter2
-       Hres(1)=Hres(1)+output(t,14)
-       Hres(2)=Hres(2)+output(t,15)
-       PH(1)=PH(1)+output(t,10) !price1
-       PH(2)=PH(2)+output(t,11) !price2
-       Pension=output(t,20)
-       Wage=output(t,2)
-       iHF=nint(output(t,1))
-       countHF(iHF)=countHF(iHF)+1.0
-       PropTaxIncomeAvg(iHF)=PropTaxIncomeAvg(iHF)+output(t,29)
-       HouseValueAvg(iHF)=HouseValueAvg(iHF)+
-     1  (output(t,14)*output(t,10)+output(t,15)*output(t,11))
-       HouseValueForeignAvg(iHF)=HouseValueForeignAvg(iHF)+
-     1  output(t,10)*
-     1  exp(HFgrid0(iHF,1)-HFgrid1(iHF,1)*
-     1      log(output(t,10)*(1.0+taxpropOOT(1))))+
-     1  output(t,11)*
-     1  exp(HFgrid0(iHF,2)-HFgrid1(iHF,2)*
-     1      log(output(t,11)*(1.0+taxpropOOT(2))))
-
-       do i=1,nAgent
-        j=(t-1)*nAgent+i
-!        iDZ=1
-!        do tempI1=1,nDZ-1
-!         if(outputWelf(j,11).gt.DZgrid(nint(outputWelf(j,3)),tempI1)+0.05) iDZ=tempI1+1
-!        end do
-        iDZ=nint(outputWelf(j,14))
-
-        ForDemTot(1)=exp(HFgrid0(nint(output(t,1)),1)-
-     1                   HFgrid1(nint(output(t,1)),1)*
-     1                   log(output(t,10)*(1.0+taxpropOOT(1))))    !Foreign Demand per Household in Z1
-        ForDemTot(2)=exp(HFgrid0(nint(output(t,1)),2)-
-     1                   HFgrid1(nint(output(t,1)),2)*
-     1                   log(output(t,11)*(1.0+taxpropOOT(2))))    !Foreign Demand per Household in Z2
-
-        if(nint(outputWelf(j,3)).gt.nAge-nRet) then
-         LaborIncome=SSIdist(iDZ)*Pension
-         LIavgAll=LIavgAll+LaborIncome
-         NWavgAll=NWavgAll+outputWelf(j,13)
-        else
-!         LaborIncome=outputWelf(j,10)*Wage*(1.0-taxss)*
-!     1               outputWelf(j,11)*AgeProd(nint(outputWelf(j,3)))
-         LaborIncome=outputWelf(j,10)*Wage*
-     1               outputWelf(j,11)*AgeProd(nint(outputWelf(j,3)))
-         LIavgAll=LIavgAll+LaborIncome
-         LIavgWorker=LIavgWorker+LaborIncome
-         NWavgAll=NWavgAll+outputWelf(j,13)
-         NWavgWorker=NWavgWorker+outputWelf(j,13)
-         countworker=countworker+1
-         if(countworker.le.10000) then
-          NWworkerSample(countworker,1)=outputWelf(j,13)
-         end if
-         if(countworker1.lt.10000.and.mod((t-1)*nAgent+i,17).eq.0) then
-          countworker1=countworker1+1
-          LIworkerSample(countworker1,1)=LaborIncome
-         end if
-        end if
-        countall=countall+1
-        if(countall.le.10000) NWallSample(countall,1)=outputWelf(j,13)
-
-        tempI1=nint(outputWelf(j,5)) !zone
-        Bpos=outputWelf(j,6)
-        if(Bpos.lt.0) Bpos=0
-        Bneg=outputWelf(j,6)
-        if(Bneg.gt.0) Bneg=0
-        CapIncome=Bpos*(1.0-PriceBond)+
-     1    outputWelf(j,7)*RCavgRent(tempI1,iHF)*
-     1   (Rent(tempI1)-PH(tempI1)*(deprH(tempI1)+taxprop(iHF,tempI1)))+
-     1    Bneg*(1.0-PriceBond)*
-     1    outputWelf(j,7)/(outputWelf(j,7)+outputWelf(j,9))
-        if(abs(outputWelf(j,5)-1.0).lt..01) then
-         nLOCall(1)=nLOCall(1)+1.0                !living in Z1
-         if(abs(outputWelf(j,12)-2.0).gt..01)nLOCrent(1)=nLOCrent(1)+1.0  !renting in Z1
-         if(abs(outputWelf(j,12)-3.0).lt..01) nLOCrc(1)=nLOCrc(1)+1.0  !rent controlled in Z1
-         if(outputWelf(j,3).gt.real(nAge-nRet)+0.01)
-     1      nLOCret(1)=nLOCret(1)+1.0
-         if(outputWelf(j,3).gt.real(nAge-nRet)+0.01.and.
-     1      abs(outputWelf(j,12)-3.0).gt..01)
-     1      nLOCretmkt(1)=nLOCretmkt(1)+1.0
-         NWavg(1)=NWavg(1)+outputWelf(j,13) !NW
-         LIavg(1)=LIavg(1)+LaborIncome      !income
-         if(abs(outputWelf(j,12)-3.0).gt..01)
-     1      LIMKTavg(1)=LIMKTavg(1)+LaborIncome
-         CIavg(1)=CIavg(1)+CapIncome      !income
-         if(abs(outputWelf(j,12)-3.0).lt..01) then
-          tempR1=tempR1+
-     1 output(t,10)*outputWelf(j,9)*(1.0-RCrentred(1,iHF))
-         else
-          tempR1=tempR1+output(t,10)*outputWelf(j,9)
-          tempR3=tempR3+output(t,10)*outputWelf(j,9)
-         end if
-         tempR1=tempR1+output(t,10)*ForDemTot(1)
-         tempR3=tempR3+output(t,10)*ForDemTot(1)
-        end if
-        if(abs(outputWelf(j,5)-2.0).lt..01) then
-         nLOCall(2)=nLOCall(2)+1.0                !living in Z1
-         if(abs(outputWelf(j,12)-2.0).gt..01)nLOCrent(2)=nLOCrent(2)+1.0  !renting in Z2
-         if(abs(outputWelf(j,12)-3.0).lt..01) nLOCrc(2)=nLOCrc(2)+1.0  !rent controlled in Z2
-         if(outputWelf(j,3).gt.real(nAge-nRet)+0.01)
-     1      nLOCret(2)=nLOCret(2)+1.0
-         if(outputWelf(j,3).gt.real(nAge-nRet)+0.01.and.
-     1      abs(outputWelf(j,12)-3.0).gt..01)
-     1      nLOCretmkt(2)=nLOCretmkt(2)+1.0
-         NWavg(2)=NWavg(2)+outputWelf(j,13) !NW
-         LIavg(2)=LIavg(2)+LaborIncome      !income
-         if(abs(outputWelf(j,12)-3.0).gt..01)
-     1      LIMKTavg(2)=LIMKTavg(2)+LaborIncome
-
-         CIavg(2)=CIavg(2)+CapIncome
-         if(abs(outputWelf(j,12)-3.0).lt..01) then
-          tempR2=tempR2+
-     1 output(t,11)*outputWelf(j,9)*(1.0-RCrentred(2,iHF))
-         else
-          tempR2=tempR2+output(t,11)*outputWelf(j,9)
-          tempR4=tempR4+output(t,11)*outputWelf(j,9)
-         end if
-         tempR2=tempR2+output(t,11)*ForDemTot(2)
-         tempR4=tempR4+output(t,11)*ForDemTot(2)
-        end if
-       end do
-      end do
-
-      do i=1,nLOC
-       Rent(i)=Rent(i)/real(TotYears-100)
-       PH(i)=PH(i)/real(TotYears-100)
-       Hres(i)=Hres(i)/real(TotYears-100)
-       HresRC(i)=HresRC(i)/real(TotYears-100)
-       HresRenter(i)=HresRenter(i)/real(TotYears-100)
-       nLOCall(i)=nLOCall(i)/real(TotYears-100)
-       nLOCrent(i)=nLOCrent(i)/real(TotYears-100)
-       nLOCrc(i)=nLOCrc(i)/real(TotYears-100)
-       nLOCretmkt(i)=nLOCretmkt(i)/real(TotYears-100)
-       nLOCret(i)=nLOCret(i)/real(TotYears-100)
-       PHmult(i)=1.0-(HresRC(i)/Hres(i))+
-     1      (HresRC(i)/Hres(i))*(1.0-RCrentred(i,1))   !average rent (or price) in zone as fraction of market rent (or price)
-       LIavg(i)=LIavg(i)/(real(TotYears-100)*nLOCall(i))
-       CIavg(i)=CIavg(i)/(real(TotYears-100)*nLOCall(i))
-       NWavg(i)=NWavg(i)/(real(TotYears-100)*nLOCall(i))
-       LIMKTavg(i)=LIMKTavg(i)/
-     1            (real(TotYears-100)*(nLOCall(i)-nLOCrc(i)))
-      end do
-
-
-      call sort(NWallSample,10000,SortIndex)
-      tempR5=0
-      tempR6=0
-      do i=1,10000
-       tempR5=tempR5+real(i)*NWallSample(i,1)
-       tempR6=tempR6+NWallSample(i,1)
-      end do
-      GiniNWall=((2.0*tempR5)/(10000.0*tempR6))-1.0
-      call sort(NWworkerSample,10000,SortIndex)
-      tempR5=0
-      tempR6=0
-      do i=1,10000
-       tempR5=tempR5+real(i)*NWworkerSample(i,1)
-       tempR6=tempR6+NWworkerSample(i,1)
-      end do
-      GiniNWworker=((2.0*tempR5)/(10000.0*tempR6))-1.0
-
-      AvgBeq=AvgBeq/real(TotYears-100)
-      tempR1=tempR1/real(TotYears-100)  !sum(PH1*Hres1) = price of all housing in Z1
-      tempR2=tempR2/real(TotYears-100)  !sum(PH2*Hres2) = price of all housing in Z2
-      tempR3=tempR3/real(TotYears-100)  !sum(PH1*Hres1|mkt) = price of all housing in Z1
-      tempR4=tempR4/real(TotYears-100)  !sum(PH2*Hres2|mkt)= price of all housing in Z2
-
-      tempR5=tempR1/(Hres(1)*real(nAgent))  !mean(P1) which already accounts for lower price in rent controlled
-      tempR6=tempR2/(Hres(2)*real(nAgent))  !mean(P2) which already accounts for lower price in rent controlled
-      tempR7=tempR3/((Hres(1)-HresRC(1))*real(nAgent)) !mean(P1|mkt)
-      tempR8=tempR4/((Hres(2)-HresRC(2))*real(nAgent)) !mean(P2|mkt)
-
-      write(6,*) '               Z1      Z2    Z1/Z2'
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Mkt Rent    ',Rent(1),Rent(2),Rent(1)/Rent(2)
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg Rent    ',Rent(1)*(tempR5/tempR7),Rent(2)*(tempR6/tempR8),
-     1 (Rent(1)*(tempR5/tempR7))/(Rent(2)*(tempR6/tempR8))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg P/Rent  ',PH(1)/Rent(1),PH(2)/Rent(2),
-     1  (PH(1)/Rent(1))/(PH(2)/Rent(2))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Mkt P/LabInc',tempR3/(LIMKTavg(1)*(nLOCall(1)-nLOCrc(1))),
-     1 tempR4/(LIMKTavg(2)*(nLOCall(2)-nLOCrc(2))),
-     1 (tempR3/(LIMKTavg(1)*(nLOCall(1)-nLOCrc(1))))/
-     1 (tempR4/(LIMKTavg(2)*(nLOCall(2)-nLOCrc(2))))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg P/LabInc',tempR1/(LIavg(1)*nLOCall(1)),
-     1 tempR2/(LIavg(2)*nLOCall(2)),
-     1 (tempR1/(LIavg(1)*nLOCall(1)))/(tempR2/(LIavg(2)*nLOCall(2)))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg P/TotInc',tempR1/((LIavg(1)+CIavg(1))*nLOCall(1)),
-     1 tempR2/((LIavg(2)+CIavg(2))*nLOCall(2)),
-     1 (tempR1/((LIavg(1)+CIavg(1))*nLOCall(1)))/
-     1 (tempR2/((LIavg(2)+CIavg(2))*nLOCall(2)))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg NetWorth',NWavg(1),NWavg(2),NWavg(1)/NWavg(2)
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg LabInc  ',LIavg(1),LIavg(2),LIavg(1)/LIavg(2)
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg TotInc  ',LIavg(1)+CIavg(1),LIavg(2)+CIavg(2),
-     1 (LIavg(1)+CIavg(1))/(LIavg(2)+CIavg(2))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg IncMkt  ',LIMKTavg(1),LIMKTavg(2),LIMKTavg(1)/LIMKTavg(2)
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg Home    ',Hres(1)*real(nAgent)/nLOCall(1),
-     1  Hres(2)*real(nAgent)/nLOCall(2),
-     1 (Hres(1)/nLOCall(1))/(Hres(2)/nLOCall(2))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg HomeRent',
-     1 (HresRenter(1)-HresRC(1))*real(nAgent)/(nLOCrent(1)-nLOCrc(1)),
-     1 (HresRenter(2)-HresRC(2))*real(nAgent)/(nLOCrent(2)-nLOCrc(2)),
-     1 ((HresRenter(1)-HresRC(1))*real(nAgent)/(nLOCrent(1)-nLOCrc(1)))/
-     1 ((HresRenter(2)-HresRC(2))*real(nAgent)/(nLOCrent(2)-nLOCrc(2)))
-      write(6,'(a,f8.4,f8.4,f8.4)')
-     1 'Avg HomeRC  ',HresRC(1)*real(nAgent)/nLOCrc(1),
-     1 HresRC(2)*real(nAgent)/nLOCrc(2),
-     1 (HresRC(1)/nLOCrc(1))/(HresRC(2)/nLOCrc(2))
-      fracRet(1)=nLOCret(1)/nLOCall(1)
-      fracRet(2)=nLOCret(2)/nLOCall(2)
-      write(6,'(a)')
-     1'     pop1   pop2   Own1   Own2  RC1/A1 RC2/A2 RC1/R1 RC2/R2  Ret1
-     1m  Ret2m  Ret1   Ret2'
-      write(6,'(a,f7.3,f7.3,f7.3,f7.3,f7.3,f7.3,f7.3,f7.3,f7.3,f7.3,
-     1 f7.3,f7.3,f7.3,f7.3,f7.3,f7.3,f7.3)')
-     1 '%% ',nLOCall(1)/(nLOCall(1)+nLOCall(2)),
-     1 nLOCall(2)/(nLOCall(1)+nLOCall(2)),
-     1     1.0-(nLOCrent(1)/nLOCall(1)),
-     1     1.0-(nLOCrent(2)/nLOCall(2)),
-     1 nLOCrc(1)/nLOCall(1),nLOCrc(2)/nLOCall(2),
-     1 nLOCrc(1)/nLOCrent(1),nLOCrc(2)/nLOCrent(2),
-     1 nLOCretmkt(1)/nLOCall(1),nLOCretmkt(2)/nLOCall(2),
-     1 nLOCret(1)/nLOCall(1),nLOCret(2)/nLOCall(2),
-     1 NWavgAll/LIavgAll,NWavgWorker/LIavgWorker,GiniNWall,GiniNWworker,
-     1 AvgBeq*NumBorn/(NWavgAll/real(TotYears-100))
-      write(6,'(a,f10.4,f10.4,f10.4,f10.4,f10.4,f10.4)')
-     1 'PropTaxIncome ',PropTaxIncomeAvg(1)/countHF(1),
-     1 PropTaxIncomeAvg(2)/countHF(2),
-     1 HouseValueAvg(1)/countHF(1),HouseValueAvg(2)/countHF(2),
-     1 HouseValueForeignAvg(1)/countHF(1),
-     1 HouseValueForeignAvg(2)/countHF(2)
-
-      popShare1=nLOCall(1)/(nLOCall(1)+nLOCall(2))
-      rentDiff=Rent(1)/Rent(2)
-      AvgHomeRenter(1)=(HresRenter(1)-HresRC(1))*real(nAgent)/
-     1                 (nLOCrent(1)-nLOCrc(1))
-      AvgHomeRenter(2)=(HresRenter(2)-HresRC(2))*real(nAgent)/
-     1                 (nLOCrent(2)-nLOCrc(2))
-      AvgIncome=LIavgAll/real(countall)!popShare1*LIavg(1)+(1.0-popShare1)*LIavg(2)
-      AvgIncomeWorker=LIavgWorker/real(countworker)
-      call sort(LIworkerSample,10000,SortIndex)
-      MedIncomeWorker=LIworkerSample(5000,1)
-
-      do iHF=1,nHF
-       RCshareRent(1,iHF)=nLOCrc(1)/nLOCrent(1)
-       RCshareRent(2,iHF)=nLOCrc(2)/nLOCrent(2)
-      end do
-      incDiff=LIavg(1)/LIavg(2)
-      RentToIncome=
-     1 (Hres(1)*Rent(1)*RCavgrent(1,1)+Hres(2)*Rent(2)*RCavgrent(2,1))/
-     1  AvgIncomeWorker
-
-      tempR1=0
-      tempR2=0
-      tempR3=0
-      tempR4=0
-      tempR5=0
-      tempR6=0
-      tempR7=0
-      do t=101,TotYears
-       tempR1=tempR1+abs(outputErr(t,1))
-       tempR2=tempR2+abs(outputErr(t,2))
-       tempR3=tempR3+abs(outputErr(t,3))
-       tempR4=tempR4+abs(outputErr(t,4))
-       tempR5=tempR5+abs(outputErr(t,5))
-       tempR6=tempR6+abs(outputErr(t,6))
-       tempR7=tempR7+abs(outputErr(t,7))
-      end do
-      write(6,'(a,f12.5,f12.5,f12.5,f12.5,f12.5,f12.5,f12.5)')
-     1 '%err% ',tempR1/real(TotYears-100),tempR2/real(TotYears-100),
-     1 tempR3/real(TotYears-100),tempR4/real(TotYears-100),
-     1 tempR5/real(TotYears-100),tempR6/real(TotYears-100),
-     1 tempR7/real(TotYears-100)
-
-      end
 !--------------------------------------------------------------
 !This writes an ngrid by nwidth matrix to the file 'filename'
       SUBROUTINE writedatabinary(arrout,filename,nlength,nwidth)
@@ -5652,7 +4700,7 @@ c$omp end parallel
       write(6,*) RCinccut(1,1),RCinccut(2,1),RCinccut(1,2),RCinccut(2,2)
       write(6,*) RChsize(1,1),RChsize(2,1),RChsize(1,2),RChsize(2,2)
       write(6,*) RCprobStay(1),RCprobStay(2),kappa2,kappa3,HresMin
-      
+
       data iunit /11/
 
       open(unit=iunit,file=filename,status='old',form='FORMATTED')
@@ -6831,27 +5879,6 @@ c$omp end parallel
       end do !jWage
       Pension=PensInd1(1)+multWage*(PensInd1(2)-PensInd1(1))
 
-!c$omp parallel
-!c$omp& default(none)
-!c$omp& shared(i,nAgent,nInd,NWind,NWgrid,nNW,iNW,multNW,iInd,AgeInd,
-!c$omp& iZind,Normalize,iHF,t,iClMkt)
-!c$omp& private(tempR1,tempI1)
-!c$omp do
-!
-!      do i=1,nAgent
-!       !Normalize(i)=Zind(i)  !Permanent Shock
-!       Normalize(i)=1.0       !Stationary Shock
-!       tempR1=NWind(i)/Normalize(i)
-!       call findspot(NWgrid,nNW,tempR1,nint(real(nNW)*0.5),tempI1)
-!       iNW(i)=tempI1
-!       multNW(i)=(tempR1-NWgrid(iNW(i)))/
-!     1           (NWgrid(iNW(i)+1)-NWgrid(iNW(i)))
-!       iInd(i)=(AgeInd(i)-1)*nInd+(iZind(i)-1)*nNW+iNW(i)
-!      end do
-!
-!c$omp end do
-!c$omp end parallel
-
 c$omp parallel
 c$omp& default(none)
 c$omp& shared(tempI1,nAge,nDZ,nAgent,nInd,NWind,NWgridAll,nNW,iNW,
@@ -6936,14 +5963,6 @@ c$omp do
             do jH2=1,2
              iAgg=iAggGrid(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)
              iState=(iInd(i)+(jNW-1)-1)*nAgg+iAgg
-!             if(iChoiceDisc.eq.1) then
-!              VindMax8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-!     1             ValFunCond(iState,(2+nRC)*nLOC+1)
-!              dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-!     1             dValFunNW(iState,1)
-!             end if
-!             dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-!     1             dValFunNW(iState,iChoiceDisc)
              Vind8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
      1             ValFunCond(iState,iChoiceDisc)
              Cind8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
@@ -6951,20 +5970,6 @@ c$omp do
              Hind8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
      1             policy(iState,(iChoiceDisc-1)*2+2)
             end do !jH2
-!            if(iChoiceDisc.eq.1) then
-!             VindMax7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
-!     1         VindMax8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
-!     1        (VindMax8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
-!     1         VindMax8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,1))
-!             dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
-!     1         dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
-!     1        (dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
-!     1         dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,1))
-!            end if
-!            dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
-!     1         dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
-!     1        (dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
-!     1         dV8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,1))
             Cind7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
      1            Cind8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
      1           (Cind8(jNW,jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
@@ -6990,20 +5995,6 @@ c$omp do
      1            Vind7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
      1           (Vind7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,2)-
      1            Vind7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1))
-!           dV6(jNW,jWage,jRent1,jRent2,jRP1,jRP2)=
-!     1            dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
-!     1           (dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,2)-
-!     1            dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1))
-!           if(iChoiceDisc.eq.1) then
-!            VindMax6(jNW,jWage,jRent1,jRent2,jRP1,jRP2)=
-!     1            VindMax7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
-!     1           (VindMax7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,2)-
-!     1            VindMax7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1))
-!            dV6(jNW,jWage,jRent1,jRent2,jRP1,jRP2)=
-!     1            dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
-!     1           (dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,2)-
-!     1            dV7(jNW,jWage,jRent1,jRent2,jRP1,jRP2,1))
-!           end if
           end do !jRP2
 
           Cind5(jNW,jWage,jRent1,jRent2,jRP1)=
@@ -7018,20 +6009,6 @@ c$omp do
      1            Vind6(jNW,jWage,jRent1,jRent2,jRP1,1)+multRP2*
      1           (Vind6(jNW,jWage,jRent1,jRent2,jRP1,2)-
      1            Vind6(jNW,jWage,jRent1,jRent2,jRP1,1))
-!          dV5(jNW,jWage,jRent1,jRent2,jRP1)=
-!     1            dV6(jNW,jWage,jRent1,jRent2,jRP1,1)+multRP2*
-!     1           (dV6(jNW,jWage,jRent1,jRent2,jRP1,2)-
-!     1            dV6(jNW,jWage,jRent1,jRent2,jRP1,1))
-!         if(iChoiceDisc.eq.1) then
-!          VindMax5(jNW,jWage,jRent1,jRent2,jRP1)=
-!     1            VindMax6(jNW,jWage,jRent1,jRent2,jRP1,1)+multRP2*
-!     1           (VindMax6(jNW,jWage,jRent1,jRent2,jRP1,2)-
-!     1            VindMax6(jNW,jWage,jRent1,jRent2,jRP1,1))
-!          dV5(jNW,jWage,jRent1,jRent2,jRP1)=
-!     1            dV6(jNW,jWage,jRent1,jRent2,jRP1,1)+multRP2*
-!     1           (dV6(jNW,jWage,jRent1,jRent2,jRP1,2)-
-!     1            dV6(jNW,jWage,jRent1,jRent2,jRP1,1))
-!          end if
          end do! jRP1
          Cind4(jNW,jWage,jRent1,jRent2)=
      1            Cind5(jNW,jWage,jRent1,jRent2,1)+multRP1*
@@ -7045,20 +6022,6 @@ c$omp do
      1            Vind5(jNW,jWage,jRent1,jRent2,1)+multRP1*
      1           (Vind5(jNW,jWage,jRent1,jRent2,2)-
      1            Vind5(jNW,jWage,jRent1,jRent2,1))
-!         dV4(jNW,jWage,jRent1,jRent2)=
-!     1            dV5(jNW,jWage,jRent1,jRent2,1)+multRP1*
-!     1           (dV5(jNW,jWage,jRent1,jRent2,2)-
-!     1            dV5(jNW,jWage,jRent1,jRent2,1))
-!         if(iChoiceDisc.eq.1) then
-!          VindMax4(jNW,jWage,jRent1,jRent2)=
-!     1            VindMax5(jNW,jWage,jRent1,jRent2,1)+multRP1*
-!     1           (VindMax5(jNW,jWage,jRent1,jRent2,2)-
-!     1            VindMax5(jNW,jWage,jRent1,jRent2,1))
-!          dV4(jNW,jWage,jRent1,jRent2)=
-!     1            dV5(jNW,jWage,jRent1,jRent2,1)+multRP1*
-!     1           (dV5(jNW,jWage,jRent1,jRent2,2)-
-!     1            dV5(jNW,jWage,jRent1,jRent2,1))
-!         end if
         end do !jRent2
         Cind3(jNW,jWage,jRent1)=Cind4(jNW,jWage,jRent1,1)+multRent2*
      1            (Cind4(jNW,jWage,jRent1,2)-Cind4(jNW,jWage,jRent1,1))
@@ -7066,16 +6029,6 @@ c$omp do
      1            (Hind4(jNW,jWage,jRent1,2)-Hind4(jNW,jWage,jRent1,1))
         Vind3(jNW,jWage,jRent1)=Vind4(jNW,jWage,jRent1,1)+multRent2*
      1            (Vind4(jNW,jWage,jRent1,2)-Vind4(jNW,jWage,jRent1,1))
-!        dV3(jNW,jWage,jRent1)=dV4(jNW,jWage,jRent1,1)+multRent2*
-!     1    (dV4(jNW,jWage,jRent1,2)-dV4(jNW,jWage,jRent1,1))
-!        if(iChoiceDisc.eq.1) then
-!         VindMax3(jNW,jWage,jRent1)=
-!     1     VindMax4(jNW,jWage,jRent1,1)+multRent2*
-!     1    (VindMax4(jNW,jWage,jRent1,2)-VindMax4(jNW,jWage,jRent1,1))
-!         dV3(jNW,jWage,jRent1)=
-!     1     dV4(jNW,jWage,jRent1,1)+multRent2*
-!     1    (dV4(jNW,jWage,jRent1,2)-dV4(jNW,jWage,jRent1,1))
-!        end if
        end do  !jRent1
        Cind2(jNW,jWage)=Cind3(jNW,jWage,1)+multRent1*
      1             (Cind3(jNW,jWage,2)-Cind3(jNW,jWage,1))
@@ -7083,32 +6036,6 @@ c$omp do
      1             (Hind3(jNW,jWage,2)-Hind3(jNW,jWage,1))
        Vind2(jNW,jWage)=Vind3(jNW,jWage,1)+multRent1*
      1             (Vind3(jNW,jWage,2)-Vind3(jNW,jWage,1))
-!       dV2(jNW,jWage)=dV3(jNW,jWage,1)+multRent1*
-!     1               (dV3(jNW,jWage,2)-dV3(jNW,jWage,1))
-!       if(iChoiceDisc.eq.1) then
-!        VindMax2(jNW,jWage)=VindMax3(jNW,jWage,1)+multRent1*
-!     1             (VindMax3(jNW,jWage,2)-VindMax3(jNW,jWage,1))
-!
-!            if(multRent2.le.multRent1) then
-!             VindMax2(jNW,jWage)=
-!     1         VindMax4(jNW,jWage,1,1)*(1.0-multRent1)+
-!     1         VindMax4(jNW,jWage,2,2)*multRent2+
-!     1         VindMax4(jNW,jWage,2,1)*(multRent1-multRent2)
-!             dV2(jNW,jWage)=
-!     1        dV4(jNW,jWage,1,1)*(1.0-multRent1)+
-!     1        dV4(jNW,jWage,2,2)*multRent2+
-!     1        dV4(jNW,jWage,2,1)*(multRent1-multRent2)
-!            else
-!             VindMax2(jNW,jWage)=
-!     1         VindMax4(jNW,jWage,1,1)*(1.0-multRent2)+
-!     1         VindMax4(jNW,jWage,2,2)*multRent1+
-!     1         VindMax4(jNW,jWage,1,2)*(multRent2-multRent1)
-!             dV2(jNW,jWage)=
-!     1        dV4(jNW,jWage,1,1)*(1.0-multRent2)+
-!     1        dV4(jNW,jWage,2,2)*multRent1+
-!     1        dV4(jNW,jWage,1,2)*(multRent2-multRent1)
-!            end if
-!       end if
       end do !jWage
       Cind1(jNW,iChoiceDisc)=Cind2(jNW,1)+multWage*
      1                      (Cind2(jNW,2)-Cind2(jNW,1))
@@ -7116,14 +6043,6 @@ c$omp do
      1                      (Hind2(jNW,2)-Hind2(jNW,1))
       Vind1(jNW,iChoiceDisc)=Vind2(jNW,1)+multWage*
      1                      (Vind2(jNW,2)-Vind2(jNW,1))
-!      dV1(jNW,iChoiceDisc)=dV2(jNW,1)+multWage*(dV2(jNW,2)-dV2(jNW,1))
-!      if(iChoiceDisc.eq.1) then
-!       VindMax1(jNW)=VindMax2(jNW,1)+multWage*
-!     1              (VindMax2(jNW,2)-VindMax2(jNW,1))
-!       dV1(jNW)=dV2(jNW,1)+multWage*
-!     1              (dV2(jNW,2)-dV2(jNW,1))
-!      end if
-
       end do !jNW
 
       end if !countAgent=1
@@ -7220,314 +6139,6 @@ c$omp do
 c$omp end do
 c$omp end parallel
 
-
-      end
-
-!---------------------------------------------------------------------------
-      SUBROUTINE getpolicy(policy,dPolicyNW,ValFunCond,PensionGrid,
-     1     nAge,nAgent,nAgg,nInd,nWage,
-     1     nRent1,nRent2,nRP1,nRP2,nH1,nH2,nNW,nHF,nLOC,nRC,NWgrid,
-     1     WageGrid,Rent1grid,Rent2grid,RP1grid,RP2grid,H1grid,H2grid,
-     1     Wage,Rent1,Rent2,RP1,RP2,H1last,H2last,iHF,
-     1     AgeInd,iZind,NWind,Zind,Cind,Hind,LOCind,RenterInd,ValFunInd,
-     1     Pension,TieBreaker,t,iClMkt,gamma0,alphaN)
-      implicit none
-      integer nAgg,nWage,nRent1,nRent2,nRP1,nRP2,nH1,nH2,nNW,nHF,nAgent
-      integer iWage,iRent1,iRent2,iRP1,iRP2,iH1,iH2,iHF,iAgg,iNW,nAge,i
-      integer jH1,jH2,jRent1,jRent2,jRP1,jRP2,jWage,jNW,iStateL,iStateH
-      integer nLOC,iChoiceDisc,iAggGrid(2,2,2,2,2,2,2),tempI1,t,iClMkt
-      integer AgeInd(nAgent),iZind(nAgent),iInd,nInd,nRC
-      real tempR1,tempR2
-      real WageGrid(nWage),Rent1grid(nRent1),Rent2grid(nRent2)
-      real RP1grid(nRP1),RP2grid(nRP2),H1grid(nH1),H2grid(nH2)
-      real NWgrid(nNW),multNW,TieBreaker(nAgent,(2+nRC)*nLOC)
-      real multWage,multH1,multH2,multRent1,multRent2,multRP1,multRP2
-      real Wage,Rent1,Rent2,RP1,RP2,H1last,H2last,gamma0,alphaN
-      real NWind(nAgent),Zind(nAgent)
-      integer LOCind(nAgent),RenterInd(nAgent),extrap(2)
-      integer iChoiceDisc1,iChoiceDisc2
-      real policy(nAge*nAgg*nInd,2*(2+nRC)*nLOC)
-      real ValFunCond(nAge*nAgg*nInd,(2+nRC)*nLOC+1)
-      real dPolicyNW(nAge*nAgg*nInd,2*(2+nRC)*nLOC)
-      real PensionGrid(nAgg),Pension
-      real Vind7(2,2,2,2,2,2,2),Vind6(2,2,2,2,2,2),Vind5(2,2,2,2,2)
-      real Vind4(2,2,2,2),Vind3(2,2,2),Vind2(2,2),Vind1(2),PensInd1(2)
-      real Cind7(2,2,2,2,2,2,2),Cind6(2,2,2,2,2,2),Cind5(2,2,2,2,2)
-      real Cind4(2,2,2,2),Cind3(2,2,2),Cind2(2,2),Cind1(2),Cind(nAgent)
-      real Hind7(2,2,2,2,2,2,2),Hind6(2,2,2,2,2,2),Hind5(2,2,2,2,2)
-      real Hind4(2,2,2,2),Hind3(2,2,2),Hind2(2,2),Hind1(2),Hind(nAgent)
-      real PensInd7(2,2,2,2,2,2,2),PensInd6(2,2,2,2,2,2),PensInd3(2,2,2)
-      real PensInd5(2,2,2,2,2),PensInd4(2,2,2,2),PensInd2(2,2)
-      real CindCond(2*nLOC),HindCond(2*nLOC),VindCond(2*nLOC)
-      real ValFunInd(nAgent),Normalize
-
-
-!      if(t.eq.41.and.iClMkt.eq.2.and.iHF.eq.1) then
-!       Wage=WageGrid(2)
-!       H1last=H1grid(2)
-!       H2last=H2grid(2)
-!       RP1=RP1grid(1)
-!       RP2=RP2grid(1)
-!       !Rent1=Rent1grid(2)
-!       !Rent2=Rent2grid(2)
-!      end if
-
-
-
-
-      call findspot(WageGrid,nWage,Wage,nint(real(nWage)*0.5),iWage)
-      call findspot(H1grid,nH1,H1last,nint(real(nH1)*0.5),iH1)
-      call findspot(H2grid,nH2,H2last,nint(real(nH2)*0.5),iH2)
-      call findspot(Rent1grid,nRent1,Rent1,nint(real(nRent1)*0.5),
-     1 iRent1)
-      call findspot(Rent2grid,nRent2,Rent2,nint(real(nRent2)*0.5),
-     1 iRent2)
-      call findspot(RP1grid,nRP1,RP1,nint(real(nRP1)*0.5),iRP1)
-      call findspot(RP2grid,nRP2,RP2,nint(real(nRP2)*0.5),iRP2)
-
-      multWage=(Wage-WageGrid(iWage))/
-     1         (WageGrid(iWage+1)-WageGrid(iWage))
-      multH1=(H1last-H1grid(iH1))/(H1grid(iH1+1)-H1grid(iH1))
-      multH2=(H2last-H2grid(iH2))/(H2grid(iH2+1)-H2grid(iH2))
-      multRP1=(RP1-RP1grid(iRP1))/(RP1grid(iRP1+1)-RP1grid(iRP1))
-      multRP2=(RP2-RP2grid(iRP2))/(RP2grid(iRP2+1)-RP2grid(iRP2))
-      multRent1=(Rent1-Rent1grid(iRent1))/
-     1          (Rent1grid(iRent1+1)-Rent1grid(iRent1))
-      multRent2=(Rent2-Rent2grid(iRent2))/
-     1          (Rent2grid(iRent2+1)-Rent2grid(iRent2))
-
-      do jWage=1,2
-       do jRent1=1,2
-        do jRent2=1,2
-         do jRP1=1,2
-          do jRP2=1,2
-           do jH1=1,2
-            do jH2=1,2
-
-             iAggGrid(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-     1         (iWage+(jWage-1)-1)*nRent1*nRent2*nRP1*nRP2*nH1*nH2*nHF+
-     1         (iRent1+(jRent1-1)-1)*nRent2*nRP1*nRP2*nH1*nH2*nHF+
-     1         (iRent2+(jRent2-1)-1)*nRP1*nRP2*nH1*nH2*nHF+
-     1         (iRP1+(jRP1-1)-1)*nRP2*nH1*nH2*nHF+
-     1         (iRP2+(jRP2-1)-1)*nH1*nH2*nHF+
-     1         (iH1+(jH1-1)-1)*nH2*nHF+
-     1         (iH2+(jH2-1)-1)*nHF+iHF
-             tempI1=iAggGrid(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)
-             PensInd7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-     1         PensionGrid(tempI1)
-            end do !jH2
-            PensInd6(jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
-     1        PensInd7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
-     1       (PensInd7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
-     1        PensInd7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1))
-           end do  !jH1
-           PensInd5(jWage,jRent1,jRent2,jRP1,jRP2)=
-     1        PensInd6(jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
-     1       (PensInd6(jWage,jRent1,jRent2,jRP1,jRP2,2)-
-     1        PensInd6(jWage,jRent1,jRent2,jRP1,jRP2,1))
-          end do !jRP2
-          PensInd4(jWage,jRent1,jRent2,jRP1)=
-     1        PensInd5(jWage,jRent1,jRent2,jRP1,1)+multRP2*
-     1       (PensInd5(jWage,jRent1,jRent2,jRP1,2)-
-     1        PensInd5(jWage,jRent1,jRent2,jRP1,1))
-         end do !jRP1
-         PensInd3(jWage,jRent1,jRent2)=
-     1        PensInd4(jWage,jRent1,jRent2,1)+multRP1*
-     1       (PensInd4(jWage,jRent1,jRent2,2)-
-     1        PensInd4(jWage,jRent1,jRent2,1))
-        end do !jRent2
-        PensInd2(jWage,jRent1)=
-     1        PensInd3(jWage,jRent1,1)+multRent2*
-     1       (PensInd3(jWage,jRent1,2)-PensInd3(jWage,jRent1,1))
-       end do !jRent1
-       PensInd1(jWage)=
-     1        PensInd2(jWage,1)+multRent1*
-     1       (PensInd2(jWage,2)-PensInd2(jWage,1))
-      end do !jWage
-      Pension=PensInd1(1)+multWage*(PensInd1(2)-PensInd1(1))
-
-c$omp parallel
-c$omp& default(none)
-c$omp& shared(i,nAgg,nAgent,NWind,Zind,NWgrid,nNW,nLOC,iAggGrid,policy,
-c$omp& multWage,multRent1,multRent2,multRP1,multRP2,multH1,multH2,
-c$omp& ValFunCond,RenterInd,LOCind,AgeInd,Cind,Hind,TieBreaker,t,
-c$omp& dPolicyNW,gamma0,alphaN,ValFunInd,iZind,nInd,iClMkt,iHF)
-c$omp& private(iNW,iInd,tempR1,tempR2,multNW,
-c$omp& jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2,extrap,
-c$omp& iAgg,iStateL,iStateH,tempI1,Cind7,Cind6,Cind5,Cind4,Cind3,Cind2,
-c$omp& Cind1,Hind7,Hind6,Hind5,Hind4,Hind3,Hind2,Hind1,Vind7,Vind6,
-c$omp& Vind5,Vind4,Vind3,Vind2,Vind1,iChoiceDisc,CindCond,HindCond,
-c$omp& VindCond,Normalize,iChoiceDisc1,iChoiceDisc2)
-c$omp do
-
-      do i=1,nAgent
-
-      !Normalize=Zind(i)  !Permanent Shock
-      Normalize=1.0       !Stationary Shock
-
-      tempR1=NWind(i)/Normalize
-      call findspot(NWgrid,nNW,tempR1,nint(real(nNW)*0.5),iNW)
-      multNW=(tempR1-NWgrid(iNW))/(NWgrid(iNW+1)-NWgrid(iNW))
-
-      do iChoiceDisc=1,2*nLOC
-
-      do jWage=1,2
-       do jRent1=1,2
-        do jRent2=1,2
-         do jRP1=1,2
-          do jRP2=1,2
-           do jH1=1,2
-            do jH2=1,2
-             iAgg=iAggGrid(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)
-             iInd=(iZind(i)-1)*nNW+iNW
-             iStateL=(AgeInd(i)-1)*nAgg*nInd+(iInd+(1-1)-1)*nAgg+iAgg
-             iStateH=(AgeInd(i)-1)*nAgg*nInd+(iInd+(2-1)-1)*nAgg+iAgg
-!             Cind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-!     1              policy(iStateL,(iChoiceDisc-1)*2+1)+multNW*
-!     1             (policy(iStateH,(iChoiceDisc-1)*2+1)-
-!     1              policy(iStateL,(iChoiceDisc-1)*2+1))
-
-             call CHFEV(NWgrid(iNW),NWgrid(iNW+1),
-     1              policy(iStateL,(iChoiceDisc-1)*2+1),
-     1              policy(iStateH,(iChoiceDisc-1)*2+1),
-     2              dPolicyNW(iStateL,(iChoiceDisc-1)*2+1),
-     1              dPolicyNW(iStateH,(iChoiceDisc-1)*2+1),
-     3              1,tempR1,tempR2,extrap,tempI1)
-             Cind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=tempR2
-             if(tempR2.lt.policy(iStateL,(iChoiceDisc-1)*2+1).or.
-     1          tempR2.gt.policy(iStateH,(iChoiceDisc-1)*2+1)) then
-              Cind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-     1              policy(iStateL,(iChoiceDisc-1)*2+1)+multNW*
-     1             (policy(iStateH,(iChoiceDisc-1)*2+1)-
-     1              policy(iStateL,(iChoiceDisc-1)*2+1))
-             end if
-             Hind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-     1              policy(iStateL,(iChoiceDisc-1)*2+2)+multNW*
-     1             (policy(iStateH,(iChoiceDisc-1)*2+2)-
-     1              policy(iStateL,(iChoiceDisc-1)*2+2))
-             Vind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,jH2)=
-     1              ValFunCond(iStateL,iChoiceDisc)+multNW*
-     1             (ValFunCond(iStateH,iChoiceDisc)-
-     1              ValFunCond(iStateL,iChoiceDisc))
-            end do !jH2
-            Cind6(jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
-     1            Cind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
-     1           (Cind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
-     1            Cind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1))
-            Hind6(jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
-     1            Hind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
-     1           (Hind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
-     1            Hind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1))
-            Vind6(jWage,jRent1,jRent2,jRP1,jRP2,jH1)=
-     1            Vind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1)+multH2*
-     1           (Vind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,2)-
-     1            Vind7(jWage,jRent1,jRent2,jRP1,jRP2,jH1,1))
-           end do  !jH1
-           Cind5(jWage,jRent1,jRent2,jRP1,jRP2)=
-     1            Cind6(jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
-     1           (Cind6(jWage,jRent1,jRent2,jRP1,jRP2,2)-
-     1            Cind6(jWage,jRent1,jRent2,jRP1,jRP2,1))
-           Hind5(jWage,jRent1,jRent2,jRP1,jRP2)=
-     1            Hind6(jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
-     1           (Hind6(jWage,jRent1,jRent2,jRP1,jRP2,2)-
-     1            Hind6(jWage,jRent1,jRent2,jRP1,jRP2,1))
-           Vind5(jWage,jRent1,jRent2,jRP1,jRP2)=
-     1            Vind6(jWage,jRent1,jRent2,jRP1,jRP2,1)+multH1*
-     1           (Vind6(jWage,jRent1,jRent2,jRP1,jRP2,2)-
-     1            Vind6(jWage,jRent1,jRent2,jRP1,jRP2,1))
-          end do !jRP2
-          Cind4(jWage,jRent1,jRent2,jRP1)=
-     1            Cind5(jWage,jRent1,jRent2,jRP1,1)+multRP2*
-     1           (Cind5(jWage,jRent1,jRent2,jRP1,2)-
-     1            Cind5(jWage,jRent1,jRent2,jRP1,1))
-          Hind4(jWage,jRent1,jRent2,jRP1)=
-     1            Hind5(jWage,jRent1,jRent2,jRP1,1)+multRP2*
-     1           (Hind5(jWage,jRent1,jRent2,jRP1,2)-
-     1            Hind5(jWage,jRent1,jRent2,jRP1,1))
-          Vind4(jWage,jRent1,jRent2,jRP1)=
-     1            Vind5(jWage,jRent1,jRent2,jRP1,1)+multRP2*
-     1           (Vind5(jWage,jRent1,jRent2,jRP1,2)-
-     1            Vind5(jWage,jRent1,jRent2,jRP1,1))
-         end do !jRP1
-         Cind3(jWage,jRent1,jRent2)=
-     1            Cind4(jWage,jRent1,jRent2,1)+multRP1*
-     1           (Cind4(jWage,jRent1,jRent2,2)-
-     1            Cind4(jWage,jRent1,jRent2,1))
-         Hind3(jWage,jRent1,jRent2)=
-     1            Hind4(jWage,jRent1,jRent2,1)+multRP1*
-     1           (Hind4(jWage,jRent1,jRent2,2)-
-     1            Hind4(jWage,jRent1,jRent2,1))
-         Vind3(jWage,jRent1,jRent2)=
-     1            Vind4(jWage,jRent1,jRent2,1)+multRP1*
-     1           (Vind4(jWage,jRent1,jRent2,2)-
-     1            Vind4(jWage,jRent1,jRent2,1))
-        end do !jRent2
-        Cind2(jWage,jRent1)=Cind3(jWage,jRent1,1)+multRent2*
-     1                     (Cind3(jWage,jRent1,2)-Cind3(jWage,jRent1,1))
-        Hind2(jWage,jRent1)=Hind3(jWage,jRent1,1)+multRent2*
-     1                     (Hind3(jWage,jRent1,2)-Hind3(jWage,jRent1,1))
-        Vind2(jWage,jRent1)=Vind3(jWage,jRent1,1)+multRent2*
-     1                     (Vind3(jWage,jRent1,2)-Vind3(jWage,jRent1,1))
-       end do !jRent1
-       Cind1(jWage)=Cind2(jWage,1)+multRent1*
-     1             (Cind2(jWage,2)-Cind2(jWage,1))
-       Hind1(jWage)=Hind2(jWage,1)+multRent1*
-     1             (Hind2(jWage,2)-Hind2(jWage,1))
-       Vind1(jWage)=Vind2(jWage,1)+multRent1*
-     1             (Vind2(jWage,2)-Vind2(jWage,1))
-      end do !jWage
-
-      CindCond(iChoiceDisc)=Cind1(1)+multWage*(Cind1(2)-Cind1(1))
-      HindCond(iChoiceDisc)=Hind1(1)+multWage*(Hind1(2)-Hind1(1))
-      VindCond(iChoiceDisc)=Vind1(1)+multWage*(Vind1(2)-Vind1(1))
-      end do !iChoiceDisc
-
-
-      iChoiceDisc1=1
-      iChoiceDisc2=1
-      tempR1=-(10.0**30.0)
-      tempR2=tempR1
-      do iChoiceDisc=1,2*nLOC
-       if(VindCond(iChoiceDisc).gt.tempR1) then
-        tempR1=VindCond(iChoiceDisc)       !1st best
-        iChoiceDisc1=iChoiceDisc           !1st best
-       end if
-      end do
-      do iChoiceDisc=1,2*nLOC
-       if(VindCond(iChoiceDisc).gt.tempR2.and.
-     1    iChoiceDisc.ne.iChoiceDisc1) then
-        tempR2=VindCond(iChoiceDisc)
-        iChoiceDisc2=iChoiceDisc
-       end if
-      end do
-      tempI1=iChoiceDisc1
-
-      if(abs(tempR2-tempR1)/abs(tempR1).lt.0.000001) then
-       tempI1=1
-       tempR1=-(10.0**30.0)
-       do iChoiceDisc=1,2*nLOC
-        if(VindCond(iChoiceDisc)*TieBreaker(i,iChoiceDisc).gt.
-     1     tempR1.and.
-     1     (iChoiceDisc.eq.iChoiceDisc1.or.
-     1      iChoiceDisc.eq.iChoiceDisc2)) then
-         tempR1=VindCond(iChoiceDisc)*TieBreaker(i,iChoiceDisc)
-         tempI1=iChoiceDisc
-        end if
-       end do
-      end if
-      Cind(i)=CindCond(tempI1)*Normalize
-      if(Cind(i).lt.0.001) Cind(i)=0.001
-      Hind(i)=HindCond(tempI1)*Normalize
-      if(Hind(i).lt.0.0) Hind(i)=0.0
-      LOCind(i)=mod(tempI1-1,nLOC)+1
-      RenterInd(i)=1+((tempI1-LOCind(i))/nLOC)
-      ValFunInd(i)=VindCond(tempI1)*
-     1            (Normalize**((1.0-gamma0)*(1.0-alphaN)))
-
-      end do !iAgents
-
-c$omp end do
-c$omp end parallel
 
       end
 !-------------------------------------------------------------
@@ -7804,7 +6415,7 @@ c$omp end parallel
         end if
        end if
       end do
-      
+
 !Measure the number of RC agents from last period, these are the ones that may benefit from persistent RC
 !set this to zero if nRClast=1, that is if there is no persistent RC
       do i=1,nLOC
@@ -7946,14 +6557,6 @@ c$omp end parallel
        if(NWind(i).lt.NWmin) NWind(i)=NWmin
       end do
 
-
-
-
-
-!need to redo below separately for 3 groups: RClast=1,2,3
-!might need to compute number of each type ahead of time
-!make code modular so that if there are no agents in group 2 or 3 (as will happen when nRClast=1) then there is no problem
-!Computing who receives rent control based on RCprob. However, RCprob is updated each iteration so that the total size of rent controlled units demanded is equal to the amount supplied
       tempI1=nint(RCprob(1)*
      1 (real(nAgent)-nAgentRClast(1)-nAgentRClast(2)))
       tempI2=nint((RCprob(1)+RCprob(2))*
@@ -9036,11 +7639,6 @@ c$omp end parallel
       end do
 
 
-!      if(mod(t,7).eq.0)
-!     1 write(6,'(f5.0,i5,i5,f9.3,f9.3,f9.3)')
-!     1 NumDead,countBeq1,countBeq2,AvgBeq0,AvgBeq1,AvgBeq2
-
-
       do j=1,nBeqDist
 
        if(countBeq1.gt.0) then
@@ -9080,39 +7678,4 @@ c$omp end parallel
       end do
 
       end
-
-!!-------------------------------------------------------------------
-!!This creates look-up grid to get C from N using:
-!!c=((1-aN)*(1-aH)*g(R)*X*W*G*z/(aN*chi*((1-CommCost-Hours)^(chi*elastCN-1))))^(1/(1-elastCN))
-!      SUBROUTINE LookupConsHours(nWage,nRent1,nRent2,nRP1,nRP2,nH1,nH2,nHF,nNW,nDZ)
-!      implicit none
-!      integer nWage,nRent1,nRent2,nRP1,nRP2,nH1,nH2,nHF,nNW,nDZ
-!      integer iWage,iRent1,iRent2,iRP1,iRP2,iH1,iH2,iHF,iNW,iDZ
-!      integer nAgg,nInd,iAgg,iInd
-!      integer tempI1
-!      nAgg=nWage*nRent1*nRent2*nRP1*nRP2*nH1*nH2*nHF
-!      nInd=nNW*nDZ
-
-!      do iAgg=1,nAgg
-!!       iAgg=(iWage-1)*nRent1*nRent2*nRP1*nRP2*nH1*nH2*nHF+
-!!     1      (iRent1-1)*nRent2*nRP1*nRP2*nH1*nH2*nHF+
-!!     1      (iRent2-1)*nRP1*nRP2*nH1*nH2*nHF+
-!!     1      (iRP1-1)*nRP2*nH1*nH2*nHF+
-!!     1      (iRP2-1)*nH1*nH2*nHF+(iH1-1)*nH2*nHF+(iH2-1)*nHF+iHF
-!       iHF=mod(iAgg-1,nHF)+1
-!       tempI1=1+(iAgg-iHF)/nHF
-!       iH2=mod(tempI1-1,nH2)+1
-!       tempI1=1+(tempI1-iH2)/nH2
-!       iH1=mod(tempI1-1,nH1)+1
-!       tempI1=1+(tempI1-iH1)/nH1
-!       iRP2=mod(tempI1-1,nRP2)+1
-!       tempI1=1+(tempI1-iRP2)/nRP2
-!       iRP1=mod(tempI1-1,nRP1)+1
-!       tempI1=1+(tempI1-iRP1)/nRP1
-!       iRent2=mod(tempI1-1,nRent2)+1
-!       tempI1=1+(tempI1-iRent2)/nRent2
-!       iRent1=mod(tempI1-1,nRent1)+1
-!       iWage=1+(tempI1-iRent1)/nRent1
-!      end do
-!      end
 
